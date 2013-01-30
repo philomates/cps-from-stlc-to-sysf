@@ -122,7 +122,8 @@ Inductive type : typ -> Prop :=
       type (typ_fvar X)
   | type_arrow : forall L T1 T2,
       (forall X, X \notin L ->
-        type (open_tt_var T1 X) /\ type (open_tt_var T2 X)) ->
+        type (open_tt_var T1 X)) ->
+      (forall X, X \notin L -> type (open_tt_var T2 X)) ->
       type (typ_arrow T1 T2).
 
 (** Terms as locally closed pre-terms *)
