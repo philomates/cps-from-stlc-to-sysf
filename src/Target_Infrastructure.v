@@ -184,18 +184,11 @@ Proof.
   case_nat*. case_nat*.
 Qed.
 
-(* XXX: stuck here... *)
 Lemma open_tt_rec_type : forall T U,
   type T -> forall k, T = open_tt_rec k U T.
 Proof.
-  induction 1; intros; simpl.
-  auto.
-  f_equal*. 
-  auto.
-  unfolds open_tt_var.
-  unfolds open_tt.
-  f_equal*.
-  pick_fresh X. 
+  induction 1; intros; simpl; f_equal*;
+  unfolds open_tt_var; pick_fresh X.
   apply* (@open_tt_rec_type_core T1 0 (typ_fvar X)).
   apply* (@open_tt_rec_type_core T2 0 (typ_fvar X)).
 Qed.
@@ -231,9 +224,9 @@ Qed.
 (** Substitution and open_var for distinct names commute. *)
 
 Lemma subst_tt_open_tt_var : forall X Y U T, Y <> X -> type U ->
-  (subst_tt X U T) open_tt_var Y = subst_tt X U (T open_tt_var Y).
+  (open_tt_var (subst_tt X U T) Y) = subst_tt X U (open_tt_var T Y).
 Proof.
-  introv Neq Wu. rewrite* subst_tt_open_tt.
+  introv Neq Wu. unfolds open_tt_var. rewrite* subst_tt_open_tt.
   simpl. case_var*.
 Qed.
 
@@ -242,9 +235,9 @@ Qed.
 
 Lemma subst_tt_intro : forall X T2 U,
   X \notin fv_tt T2 -> type U ->
-  open_tt T2 U = subst_tt X U (T2 open_tt_var X).
+  open_tt T2 U = subst_tt X U (open_tt_var T2 X).
 Proof.
-  introv Fr Wu. rewrite* subst_tt_open_tt.
+  introv Fr Wu. unfolds open_tt_var. rewrite* subst_tt_open_tt.
   rewrite* subst_tt_fresh. simpl. case_var*.
 Qed.
 
@@ -264,10 +257,12 @@ Lemma open_te_rec_type_core : forall e j Q i P, i <> j ->
    e = open_te_rec i P e.
 Proof.
   induction e; intros; simpl in *; inversion H0; f_equal*;
+  try (assert (S i <> S j); f_equal*);
   match goal with H: ?i <> ?j |- ?t = open_tt_rec ?i _ ?t =>
    apply* (@open_tt_rec_type_core t j) end.
 Qed.
 
+(* XXX: stuck here *)
 Lemma open_te_rec_term : forall e U,
   term e -> forall k, e = open_te_rec k U e.
 Proof.
