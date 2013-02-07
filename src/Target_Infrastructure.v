@@ -266,7 +266,28 @@ Qed.
 Lemma open_te_rec_term : forall e U,
   term e -> forall k, e = open_te_rec k U e.
 Proof.
-  intros e U WF. induction WF; intros; simpl;
+  intros e U WF.
+  induction WF.
+  (* case 1: value *)
+  induction H; simpl; auto.
+  intros.
+  rewrite <- (IHvalue1 k).
+  rewrite <- (IHvalue2 k). auto.
+  
+  intros.
+  pick_fresh x. pick_fresh X.
+  f_equal*.
+  unfolds open_tt_var.
+  unfolds open_tt.  
+  apply* (@open_tt_rec_type_core T 0 (typ_fvar X)).
+  apply* open_tt_rec_type.
+  apply* (H x X). 
+
+  unfolds open_te_var.
+  unfolds open_te.  
+  apply* (@open_te_rec_type_core e1 0 (typ_fvar X)).
+  destruct (H x X); auto.
+  induction WF; intros; simpl;
     f_equal*; try solve [ apply* open_tt_rec_type ].
   unfolds open_ee. pick_fresh x.
    apply* (@open_te_rec_term_core e1 0 (trm_fvar x)).
