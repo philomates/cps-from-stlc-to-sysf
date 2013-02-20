@@ -262,38 +262,31 @@ Proof.
    apply* (@open_tt_rec_type_core t j) end.
 Qed.
 
-(* XXX: stuck here *)
 Lemma open_te_rec_term : forall e U,
   term e -> forall k, e = open_te_rec k U e.
 Proof.
   intros e U WF.
-  induction WF.
-  (* case 1: value *)
-  induction H; simpl; auto.
-  intros.
-  rewrite <- (IHvalue1 k).
-  rewrite <- (IHvalue2 k). auto.
+  apply (term_mut (fun e WF => forall k, e = open_te_rec k U e)
+                  (fun v WF => forall k, v = open_te_rec k U v));
+  intros; simpl; eauto;
+  f_equal*;
+  unfolds open_ee_var; unfolds open_ee;
+  pick_fresh x; try apply* (open_te_rec_term_core e0 0 (trm_fvar x)).
   
-  intros.
-  pick_fresh x. pick_fresh X.
-  f_equal*.
-  unfolds open_tt_var.
-  unfolds open_tt.  
+  apply* open_tt_rec_type.
+  pick_fresh X.
   apply* (@open_tt_rec_type_core T 0 (typ_fvar X)).
   apply* open_tt_rec_type.
-  apply* (H x X). 
 
-  unfolds open_te_var.
-  unfolds open_te.  
-  apply* (@open_te_rec_type_core e1 0 (typ_fvar X)).
-  destruct (H x X); auto.
-  induction WF; intros; simpl;
-    f_equal*; try solve [ apply* open_tt_rec_type ].
-  unfolds open_ee. pick_fresh x.
-   apply* (@open_te_rec_term_core e1 0 (trm_fvar x)).
-  unfolds open_te. pick_fresh X.
-   apply* (@open_te_rec_type_core e1 0 (typ_fvar X)).
+  pick_fresh X.  
+
+  apply* (open_te_rec_term_core e1 0 (trm_fvar x)).
+  unfolds* open_te_var.
+  unfolds* open_te.
+
+  apply (@open_te_rec_type_core (open_ee_rec 0 (trm_fvar x) e1) 0 (typ_fvar X)); auto.
 Qed.
+
 
 (** Substitution for a fresh name is identity. *)
 
@@ -317,9 +310,11 @@ Qed.
 (** Substitution and open_var for distinct names commute. *)
 
 Lemma subst_te_open_te_var : forall X Y U e, Y <> X -> type U ->
-  (subst_te X U e) open_te_var Y = subst_te X U (e open_te_var Y).
+  open_te_var (subst_te X U e) Y = subst_te X U (open_te_var e Y).
 Proof.
-  introv Neq Wu. rewrite* subst_te_open_te.
+  introv Neq Wu.
+  unfolds open_te_var. 
+  rewrite* subst_te_open_te.
   simpl. case_var*.
 Qed.
 
@@ -328,9 +323,9 @@ Qed.
 
 Lemma subst_te_intro : forall X U e,
   X \notin fv_te e -> type U ->
-  open_te e U = subst_te X U (e open_te_var X).
+  open_te e U = subst_te X U (open_te_var e X).
 Proof.
-  introv Fr Wu. rewrite* subst_te_open_te.
+  introv Fr Wu. unfolds open_te_var. rewrite* subst_te_open_te.
   rewrite* subst_te_fresh. simpl. case_var*.
 Qed.
 
@@ -356,11 +351,21 @@ Qed.
 Lemma open_ee_rec_term : forall u e,
   term e -> forall k, e = open_ee_rec k u e.
 Proof.
-  induction 1; intros; simpl; f_equal*.
-  unfolds open_ee. pick_fresh x.
-   apply* (@open_ee_rec_term_core e1 0 (trm_fvar x)).
-  unfolds open_te. pick_fresh X.
-   apply* (@open_ee_rec_type_core e1 0 (typ_fvar X)).
+  intros.
+  apply (term_mut (fun e WF => forall k, e = open_ee_rec k u e)
+                  (fun v WF => forall k, v = open_ee_rec k u v));
+
+  intros; simpl; f_equal*;
+  unfolds open_ee_var;
+  unfolds open_ee;
+  unfolds open_te_var;
+  unfolds open_te;
+  pick_fresh x;
+  try apply* (@open_ee_rec_term_core e0 0 (trm_fvar x)).
+  
+  pick_fresh X.
+  apply* (@open_ee_rec_term_core e1 0 (trm_fvar x)).
+  apply (@open_ee_rec_type_core (open_ee_rec 0 (trm_fvar x) e1) 0 (typ_fvar X)); auto.  
 Qed.
 
 (** Substitution for a fresh name is identity. *)
@@ -387,9 +392,9 @@ Qed.
 (** Substitution and open_var for distinct names commute. *)
 
 Lemma subst_ee_open_ee_var : forall x y u e, y <> x -> term u ->
-  (subst_ee x u e) open_ee_var y = subst_ee x u (e open_ee_var y).
+  open_ee_var (subst_ee x u e) y = subst_ee x u (open_ee_var e y).
 Proof.
-  introv Neq Wu. rewrite* subst_ee_open_ee.
+  introv Neq Wu. unfolds open_ee_var. rewrite* subst_ee_open_ee.
   simpl. case_var*.
 Qed.
 
@@ -398,9 +403,9 @@ Qed.
 
 Lemma subst_ee_intro : forall x u e,
   x \notin fv_ee e -> term u ->
-  open_ee e u = subst_ee x u (e open_ee_var x).
+  open_ee e u = subst_ee x u (open_ee_var e x).
 Proof.
-  introv Fr Wu. rewrite* subst_ee_open_ee.
+  introv Fr Wu. unfolds open_ee_var. rewrite* subst_ee_open_ee.
   rewrite* subst_ee_fresh. simpl. case_var*.
 Qed.
 
@@ -408,9 +413,9 @@ Qed.
   with term variables in terms. *)
 
 Lemma subst_te_open_ee_var : forall Z P x e,
-  (subst_te Z P e) open_ee_var x = subst_te Z P (e open_ee_var x).
+  open_ee_var (subst_te Z P e) x = subst_te Z P (open_ee_var e x).
 Proof.
-  introv. unfold open_ee. generalize 0.
+  introv. unfolds open_ee_var. unfold open_ee. generalize 0.
   induction e; intros; simpl; f_equal*. case_nat*.
 Qed.
 
@@ -418,9 +423,9 @@ Qed.
   with type variables in terms. *)
 
 Lemma subst_ee_open_te_var : forall z u e X, term u ->
-  (subst_ee z u e) open_te_var X = subst_ee z u (e open_te_var X).
+  open_te_var (subst_ee z u e) X = subst_ee z u (open_te_var e X).
 Proof.
-  introv. unfold open_te. generalize 0.
+  introv. unfold open_te_var. unfold open_te. generalize 0.
   induction e; intros; simpl; f_equal*.
   case_var*. symmetry. auto* open_te_rec_term.
 Qed.
@@ -432,7 +437,8 @@ Lemma subst_tt_type : forall T Z P,
 Proof.
   induction 1; intros; simpl; auto.
   case_var*.
-  apply_fresh* type_all as X. rewrite* subst_tt_open_tt_var.
+  
+  apply_fresh* type_arrow as X; rewrite* subst_tt_open_tt_var.
 Qed.
 
 Lemma subst_te_term : forall e Z P,
@@ -442,6 +448,7 @@ Proof.
   apply_fresh* term_abs as x. rewrite* subst_te_open_ee_var.
   apply_fresh* term_tabs as x. rewrite* subst_te_open_te_var.
 Qed.
+
 
 Lemma subst_ee_term : forall e1 Z e2,
   term e1 -> term e2 -> term (subst_ee Z e2 e1).
