@@ -157,9 +157,12 @@ with value : trm -> Prop :=
   | value_pair : forall v1 v2,
       value v1 -> value v2 -> value (trm_pair v1 v2)
   | value_abs  : forall L T e1,
+      (forall X, X \notin L ->
+        type (open_tt_var T X)) ->
       (forall x X, x \notin L -> X \notin L ->
-        type (open_tt_var T X) /\ term (open_te_var (open_ee_var e1 x) X)) ->
+        term (open_te_var (open_ee_var e1 x) X)) ->
       value (trm_abs T e1).
+
 Scheme term_mut := Induction for term Sort Prop
 with value_mut := Induction for value Sort Prop.
 
