@@ -190,7 +190,8 @@ Inductive wft : env_type -> typ -> Prop :=
       wft D (typ_fvar X)
   | wft_arrow : forall L D T1 T2,
       (forall X, X \notin L ->
-        wft (D & X ~ star) (open_tt_var T1 X) /\
+        wft (D & X ~ star) (open_tt_var T1 X)) ->
+      (forall X, X \notin L ->
         wft (D & X ~ star) (open_tt_var T2 X)) ->
       wft D (typ_arrow T1 T2).
 
