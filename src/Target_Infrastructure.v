@@ -444,22 +444,52 @@ Qed.
 Lemma subst_te_term : forall e Z P,
   term e -> type P -> term (subst_te Z P e).
 Proof.
-  lets: subst_tt_type. induction 1; intros; simpl; auto.
-  apply_fresh* term_abs as x. rewrite* subst_te_open_ee_var.
-  apply_fresh* term_tabs as x. rewrite* subst_te_open_te_var.
+  lets: subst_tt_type.
+  introv Etrm Ptyp.
+  apply (term_mut (fun e Etrm =>  term (subst_te Z P e))
+                  (fun v Etrm =>  value (subst_te Z P v)));
+  intros; simpl; auto.
+  (* let fst case *)
+  apply_fresh* term_let_fst as x.
+  rewrite* subst_te_open_ee_var.
+  (* let snd case *)
+  apply_fresh* term_let_snd as x.
+  rewrite* subst_te_open_ee_var.
+
+  (* abs case *)
+  apply_fresh* value_abs as X.
+  rewrite* subst_tt_open_tt_var.
+
+  intros.
+  rewrite* subst_te_open_ee_var.
+  rewrite* subst_te_open_te_var.
 Qed.
 
-
-Lemma subst_ee_term : forall e1 Z e2,
-  term e1 -> term e2 -> term (subst_ee Z e2 e1).
+Lemma subst_ee_value : forall e1 Z v,
+  term e1 -> value v -> term (subst_ee Z v e1).
 Proof.
-  induction 1; intros; simpl; auto.
+  introv E1trm Vval.
+  apply (term_mut (fun e Etrm =>  term (subst_ee Z v e))
+                  (fun varg Etrm =>  value (subst_ee Z v varg)));
+  intros; simpl; auto.
+  (* let fst case *)
+  apply_fresh* term_let_fst as x.
+  rewrite* subst_ee_open_ee_var.
+  (* let snd case *)
+  apply_fresh* term_let_snd as x.
+  rewrite* subst_ee_open_ee_var.
+
+  (* var *)
   case_var*.
-  apply_fresh* term_abs as y. rewrite* subst_ee_open_ee_var.
-  apply_fresh* term_tabs as Y. rewrite* subst_ee_open_te_var.
+
+  (* abs *)
+  apply_fresh* value_abs as X.
+  intros.
+  rewrite* subst_ee_open_ee_var.
+  rewrite* subst_ee_open_te_var.
 Qed.
 
-Hint Resolve subst_tt_type subst_te_term subst_ee_term.
+Hint Resolve subst_tt_type subst_te_term subst_ee_value.
 
 
 (* ********************************************************************** *)
@@ -483,82 +513,42 @@ Proof.
   intros. gen_eq K: (E & G). gen E F G.
   induction H; intros; subst; eauto.
   (* case: var *)
-  apply (@wft_var U). apply* binds_weaken.
+  apply wft_var. apply* binds_weaken.
   (* case: all *)
-  apply_fresh* wft_all as Y. apply_ih_bind* H1.
+  apply_fresh* wft_arrow as Y. apply_ih_bind* H0.
+  apply_ih_bind* H2.
 Qed.
 
-(** Through narrowing *)
+(** Through strengthening: only used for subtyping... *)
 
-Lemma wft_narrow : forall V F U T E X,
-  wft (E & X ~<: V & F) T ->
-  ok (E & X ~<: U & F) ->
-  wft (E & X ~<: U & F) T.
-Proof.
-  intros. gen_eq K: (E & X ~<: V & F). gen E F.
-  induction H; intros; subst; eauto.
-  destruct (binds_middle_inv H) as [K|[K|K]]; try destructs K.
-    applys wft_var. apply* binds_concat_right.
-    subst. applys wft_var. apply~ binds_middle_eq.
-    applys wft_var. apply~ binds_concat_left.
-     apply* binds_concat_left.
-  apply_fresh* wft_all as Y. apply_ih_bind* H1.
-Qed.
+(* Lemma wft_strengthen : forall E F X T, *)
+(*  wft (E & X ~ star & F) T -> wft (E & F) T. *)
 
-(** Through strengthening *)
+(** Through type substitution: only used for subtyping...*)
 
-Lemma wft_strengthen : forall E F x U T,
- wft (E & x ~: U & F) T -> wft (E & F) T.
-Proof.
-  intros. gen_eq G: (E & x ~: U & F). gen F.
-  induction H; intros F EQ; subst; auto.
-  apply* (@wft_var U0).
-  destruct (binds_concat_inv H) as [?|[? ?]].
-    apply~ binds_concat_right.
-    destruct (binds_push_inv H1) as [[? ?]|[? ?]].
-      subst. false.
-      apply~ binds_concat_left.
-  (* todo: binds_cases tactic *)
-  apply_fresh* wft_all as Y. apply_ih_bind* H1.
-Qed.
+(* Lemma wft_subst_tb : forall F Q E Z P T, *)
+(*   wft (E & Z ~<: Q & F) T -> *)
+(*   wft E P -> *)
+(*   ok (E & map (subst_tt Z P) F) -> *)
+(*   wft (E & map (subst_tt Z P) F) (subst_tt Z P T). *)
 
-(** Through type substitution *)
-
-Lemma wft_subst_tb : forall F Q E Z P T,
-  wft (E & Z ~<: Q & F) T ->
-  wft E P ->
-  ok (E & map (subst_tt Z P) F) ->
-  wft (E & map (subst_tt Z P) F) (subst_tt Z P T).
-Proof.
-  introv WT WP. gen_eq G: (E & Z ~<: Q & F). gen F.
-  induction WT; intros F EQ Ok; subst; simpl subst_tt; auto.
-  case_var*.
-    apply_empty* wft_weaken.
-    destruct (binds_concat_inv H) as [?|[? ?]].
-      apply (@wft_var (subst_tt Z P U)).
-       apply~ binds_concat_right.
-       unsimpl_map_bind. apply~ binds_map.
-      destruct (binds_push_inv H1) as [[? ?]|[? ?]].
-        subst. false~.
-        applys wft_var. apply* binds_concat_left.
-  apply_fresh* wft_all as Y.
-   unsimpl ((subst_tt Z P) (bind_sub T1)).
-   lets: wft_type.
-   rewrite* subst_tt_open_tt_var.
-   apply_ih_map_bind* H0.
-Qed.
 
 (** Through type reduction *)
 
 Lemma wft_open : forall E U T1 T2,
   ok E ->
-  wft E (typ_all T1 T2) ->
+  wft E (typ_arrow T1 T2) ->
   wft E U ->
   wft E (open_tt T2 U).
 Proof.
   introv Ok WA WU. inversions WA. pick_fresh X.
-  auto* wft_type. rewrite* (@subst_tt_intro X).
-  lets K: (@wft_subst_tb empty).
+  auto* wft_type.
+
+  rewrite* (@subst_tt_intro X).
+  rewrite* subst_tt_fresh.
+  (* XXX: stuck here *)
+
+  (* lets K: (@wft_subst_tb empty). *)
   specializes_vars K. clean_empty K. apply* K.
   (* todo: apply empty ? *)
 Qed.
@@ -881,7 +871,3 @@ Hint Extern 1 (term ?e) =>
   | H: red ?e _ |- _ => apply (proj1 (red_regular H))
   | H: red _ ?e |- _ => apply (proj2 (red_regular H))
   end.
-
-
-
-
