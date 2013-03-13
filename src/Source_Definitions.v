@@ -216,7 +216,7 @@ Inductive eval : trm -> trm -> Prop :=
   | eval_red : forall e v,
       red_star e v -> value v -> eval e v.
 
-(* contextual and ciu equivalence *)
+(* contextual equivalence *)
 
 Definition ctx_approx (G : env) (e1 e2 : trm) (T : type) :=
   typing G e1 T /\ typing G e2 T /\
@@ -228,12 +228,27 @@ Definition ctx_approx (G : env) (e1 e2 : trm) (T : type) :=
 Definition ctx_equiv (G : env) (e1 e2 : trm) (T : type) :=
   ctx_approx G e1 e2 T /\ ctx_approx G e2 e1 T.
 
+(* CIU equivalence *)
+
 Definition substitution := LibEnv.env trm.
 
 Definition subst_satisfies g G :=
   forall x v T, binds x v g -> value v /\ binds x T G /\ typing empty v T.
 
-(* TODO: define apply_subst
+Fixpoint apply_subst (g : substitution) (e : trm) :=
+  match e with
+  | trm_bvar n => trm_bvar n
+  | trm_fvar x => match get x g with None => trm_fvar x
+                    | Some v => v end
+  | trm_true => trm_true
+  | trm_false => trm_false
+  | trm_abs T e => trm_abs T (apply_subst g e)
+  | trm_if e1 e2 e3 => trm_if (apply_subst g e1)
+                              (apply_subst g e2)
+                              (apply_subst g e3)
+  | trm_app e1 e2 => trm_app (apply_subst g e1)
+                            (apply_subst g e2)
+  end.
 
 Definition ciu_approx (G : env) (e1 e2 : trm) (T : type) :=
   typing G e1 T /\ typing G e2 T /\
@@ -242,5 +257,3 @@ Definition ciu_approx (G : env) (e1 e2 : trm) (T : type) :=
     subst_satisfies g G ->
     eval (plug E (apply_subst g e1)) v ->
     eval (plug E (apply_subst g e2)) v.
-
-*)
