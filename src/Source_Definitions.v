@@ -218,3 +218,29 @@ Inductive eval : trm -> trm -> Prop :=
 
 (* contextual and ciu equivalence *)
 
+Definition ctx_approx (G : env) (e1 e2 : trm) (T : type) :=
+  typing G e1 T /\ typing G e2 T /\
+  forall C v,
+    context_typing C G T empty type_bool ->
+    eval (plug C e1) v ->
+    eval (plug C e2) v.
+
+Definition ctx_equiv (G : env) (e1 e2 : trm) (T : type) :=
+  ctx_approx G e1 e2 T /\ ctx_approx G e2 e1 T.
+
+Definition substitution := LibEnv.env trm.
+
+Definition subst_satisfies g G :=
+  forall x v T, binds x v g -> value v /\ binds x T G /\ typing empty v T.
+
+(* TODO: define apply_subst
+
+Definition ciu_approx (G : env) (e1 e2 : trm) (T : type) :=
+  typing G e1 T /\ typing G e2 T /\
+  forall E g v,
+    eval_context E -> context_typing E empty T empty type_bool ->
+    subst_satisfies g G ->
+    eval (plug E (apply_subst g e1)) v ->
+    eval (plug E (apply_subst g e2)) v.
+
+*)
