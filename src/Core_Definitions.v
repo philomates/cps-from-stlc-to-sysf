@@ -49,7 +49,10 @@ Inductive trm : Set :=
   | t_trm_let_fst : trm -> trm -> trm
   (* let 0 be 2nd proj of pair in body *)
   | t_trm_let_snd : trm -> trm -> trm
-  | t_trm_app   : trm -> typ -> trm -> trm.
+  | t_trm_app   : trm -> typ -> trm -> trm
+  (* Boundary Terms *)
+  | st_trm : trm -> typ -> trm
+  | ts_trm : trm -> typ -> trm -> trm.
 
 (* Opening up a type binder occuring in a type *)
 Fixpoint open_tt_rec (K : nat) (U : typ) (T : typ) {struct T} : typ :=
@@ -97,6 +100,11 @@ Fixpoint open_te_rec (K : nat) (U : typ) (e : trm) {struct e} : trm :=
   | t_trm_app e1 t e2 => t_trm_app (open_te_rec K U e1)
                                    (open_tt_rec K U t)
                                    (open_te_rec K U e2)
+  | st_trm e t       => st_trm (open_te_rec K U e)
+                               (open_tt_rec K U t)
+  | ts_trm e1 t e2   => ts_trm (open_te_rec K U e1)
+                               (open_tt_rec K U t)
+                               (open_te_rec K U e2)
   end.
 
 Definition open_te t U := open_te_rec 0 U t.
@@ -131,6 +139,8 @@ Fixpoint open_ee_rec (k : nat) (f : trm) (e : trm) {struct e} : trm :=
   | t_trm_app e1 t e2 => t_trm_app (open_ee_rec k f e1)
                                    t
                                    (open_ee_rec k f e2)
+  | st_trm e t        => st_trm (open_ee_rec k f e) t
+  | ts_trm e1 t e2    => ts_trm (open_ee_rec k f e1) t (open_ee_rec k f e2)
   end.
 
 Definition open_ee t u := open_ee_rec 0 u t.
@@ -235,3 +245,6 @@ Inductive term : trm -> Prop :=
   | term_s : forall t, s_term t -> term t.
 
 (* TODO: Environments *)
+(* TODO: Contexts *)
+(* TODO: Reduction rules *)
+(* TODO: Equivalence *)
