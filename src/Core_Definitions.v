@@ -13,53 +13,54 @@ Implicit Type X : var.
 
 Inductive typ : Set :=
   (* Source types *)
-  | s_typ_bool : typ                    (* bool *)
-  | s_typ_arrow : typ -> typ -> typ (* s -> s *)
+  | s_typ_bool : typ                (* bool *)
+  | s_typ_arrow : typ -> typ -> typ (* S -> S *)
 
   (* Target types *)
-  | t_typ_bool : typ                    (* bool *)
-  | t_typ_pair : typ -> typ -> typ  (* t x t *)
-  | t_typ_bvar : nat -> typ             (* n *)
-  | t_typ_fvar : var -> typ             (* X *)
-  | t_typ_arrow : typ -> typ -> typ (* forall . t -> t *).
+  | t_typ_bool : typ                (* bool *)
+  | t_typ_pair : typ -> typ -> typ  (* T x T *)
+  | t_typ_bvar : nat -> typ         (* N *)
+  | t_typ_fvar : var -> typ         (* X *)
+  | t_typ_arrow : typ -> typ -> typ (* forall . T -> T *).
 
 (* Syntax of pre-terms *)
 
 Inductive trm : Set :=
   (* source values *)
-  | s_trm_bvar : nat -> trm
-  | s_trm_fvar : var -> trm
-  | s_trm_true : trm
-  | s_trm_false : trm
-  | s_trm_abs : typ -> trm -> trm
+  | s_trm_bvar : nat -> trm             (* n *)
+  | s_trm_fvar : var -> trm             (* x *)
+  | s_trm_true : trm                    (* tt *)
+  | s_trm_false : trm                   (* ff *)
+  | s_trm_abs : typ -> trm -> trm       (* lambda : S . e *)
   (* source non-values *)
-  | s_trm_if : trm -> trm -> trm -> trm
-  | s_trm_app : trm -> trm -> trm
+  | s_trm_if : trm -> trm -> trm -> trm (* if e e e *)
+  | s_trm_app : trm -> trm -> trm       (* e e *)
 
   (* target values *)
-  | t_trm_bvar  : nat -> trm
-  | t_trm_fvar  : var -> trm
-  | t_trm_true  : trm
-  | t_trm_false : trm
-  | t_trm_pair  : trm -> trm -> trm
-  | t_trm_abs   : typ -> trm -> trm
+  | t_trm_bvar  : nat -> trm               (* n *)
+  | t_trm_fvar  : var -> trm               (* x *)
+  | t_trm_true  : trm                      (* tt *)
+  | t_trm_false : trm                      (* ff *)
+  | t_trm_pair  : trm -> trm -> trm        (* (u, u) *)
+  | t_trm_abs   : typ -> trm -> trm        (* Lambda . lambda : T . m *)
   (* target non-values *)
-  | t_trm_if    : trm -> trm -> trm -> trm
-  (* let 0 be 1st proj of pair in body *)
-  | t_trm_let_fst : trm -> trm -> trm
-  (* let 0 be 2nd proj of pair in body *)
-  | t_trm_let_snd : trm -> trm -> trm
-  | t_trm_app   : trm -> typ -> trm -> trm
+  | t_trm_if    : trm -> trm -> trm -> trm (* if u e e *)
+  | t_trm_let_fst : trm -> trm -> trm      (* let x = fst u in m *)
+  | t_trm_let_snd : trm -> trm -> trm      (* let x = snd u in m *)
+  | t_trm_app   : trm -> typ -> trm -> trm (* u T u *)
+
   (* Boundary Terms *)
-  | st_trm : trm -> typ -> trm
-  | ts_trm : trm -> typ -> trm -> trm.
+  | st_trm : trm -> typ -> trm         (* (S) ST m *)
+  | ts_trm : trm -> typ -> trm -> trm  (* let x = TS (S) e in m *).
 
 (* Opening up a type binder occuring in a type *)
 Fixpoint open_tt_rec (K : nat) (U : typ) (T : typ) {struct T} : typ :=
   match T with
+  (* no type variables in source types *)
   | s_typ_bool        => T
   | s_typ_arrow _ _   => T
   | t_typ_bool        => T
+  (* target types *)
   | t_typ_pair T1 T2  => t_typ_pair (open_tt_rec K U T1)
                                     (open_tt_rec K U T2)
   | t_typ_bvar J      => If K = J then U else (t_typ_bvar J)
