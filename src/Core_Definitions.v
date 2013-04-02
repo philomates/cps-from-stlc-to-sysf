@@ -190,7 +190,7 @@ Fixpoint t_open_ee_rec (k : nat) (m' : trm) (e : trm) {struct e} : trm :=
                                    (t_open_ee_rec k m' m2)
   (* boundary terms *)
   | trm_st m t        => trm_st (t_open_ee_rec k m' m) t
-  | trm_ts e t m      => trm_ts (t_open_ee_rec k m' e) t (t_open_ee_rec k m' m)
+  | trm_ts e t m      => trm_ts (t_open_ee_rec k m' e) t (t_open_ee_rec (S k) m' m)
   end.
 
 Definition t_open_ee e m' := t_open_ee_rec 0 m' e. (* e [m' / 0] *)
@@ -215,13 +215,9 @@ Inductive t_type : typ -> Prop :=
       t_type (t_typ_fvar X)
   | t_type_arrow : forall L T1 T2,
       (forall X, X \notin L ->
-        t_type (t_open_tt_var T1 X)) ->
-      (forall X, X \notin L -> t_type (t_open_tt_var T2 X)) ->
+        t_type (open_tt_var T1 X)) ->
+      (forall X, X \notin L -> t_type (open_tt_var T2 X)) ->
       t_type (t_typ_arrow T1 T2).
-
-Inductive type : typ -> Prop :=
-  | type_t : forall t, t_type t -> type t
-  | type_s : forall t, s_type t -> type t.
 
 (* Target terms *)
 Inductive t_term : trm -> Prop :=
@@ -254,9 +250,9 @@ with t_value : trm -> Prop :=
       t_value v1 -> t_value v2 -> t_value (t_trm_pair v1 v2)
   | t_value_abs  : forall L T e1,
       (forall X, X \notin L ->
-        t_type (t_open_tt_var T X)) ->
+        t_type (open_tt_var T X)) ->
       (forall x X, x \notin L -> X \notin L ->
-        t_term (t_open_te_var (t_open_ee_var e1 x) X)) ->
+        t_term (open_te_var (t_open_ee_var e1 x) X)) ->
       t_value (t_trm_abs T e1).
 
 (* Contexts *)
@@ -295,56 +291,66 @@ Inductive ctx : Set :=
   | ctx_ts : ctx -> typ -> trm -> ctx (* let _ = (ST σ E) in m *).
 
 (* Opening of contexts *)
-Fixpoint ctx_open_ee_rec (K : nat) (f : trm) (C : ctx) {struct C} : ctx :=
+(* isS = True means we are opening a source term
+ * isS = False means we are opening a target term *)
+Fixpoint ctx_open_ee_rec (isS : bool) (K : nat) (f : trm)
+                         (C : ctx) {struct C} : ctx :=
+  let (Ss,St) := match isS with
+              | true => (S,id)
+              | false => (id,S)
+            end in
   match C with
+    (* source contexts *)
     | s_ctx_hole => s_ctx_hole
-    | s_ctx_if C e2 e3 => s_ctx_if (ctx_open_ee_rec K f C)
-                                   (open_ee_rec K f e2)
-                                   (open_ee_rec K f e3)
-    | s_ctx_app1 C e => s_ctx_app1 (ctx_open_ee_rec K f C) (open_ee_rec K f e)
-    | s_ctx_app2 e C => s_ctx_app2 (open_ee_rec K f e) (ctx_open_ee_rec K f C)
-    | s_ctx_abs s C  => s_ctx_abs s (ctx_open_ee_rec K f C)
-    | s_ctx_if_true e1 C e3 => s_ctx_if_true (open_ee_rec K f e1)
-                                             (ctx_open_ee_rec K f C)
-                                             (open_ee_rec K f e3)
-    | s_ctx_if_false e1 e2 C => s_ctx_if_false (open_ee_rec K f e1)
-                                               (open_ee_rec K f e2)
-                                               (ctx_open_ee_rec K f C)
-
+    | s_ctx_if C e2 e3 => s_ctx_if (ctx_open_ee_rec isS K f C)
+                                   (s_open_ee_rec K f e2)
+                                   (s_open_ee_rec K f e3)
+    | s_ctx_app1 C e => s_ctx_app1 (ctx_open_ee_rec isS K f C) (s_open_ee_rec K f e)
+    | s_ctx_app2 e C => s_ctx_app2 (s_open_ee_rec K f e) (ctx_open_ee_rec isS K f C)
+    | s_ctx_abs s C  => s_ctx_abs s (ctx_open_ee_rec isS (Ss K) f C)
+    | s_ctx_if_true e1 C e3 => s_ctx_if_true (s_open_ee_rec K f e1)
+                                             (ctx_open_ee_rec isS K f C)
+                                             (s_open_ee_rec K f e3)
+    | s_ctx_if_false e1 e2 C => s_ctx_if_false (s_open_ee_rec K f e1)
+                                               (s_open_ee_rec K f e2)
+                                               (ctx_open_ee_rec isS K f C)
+    (* target contexts *)
     | t_ctx_hole => t_ctx_hole
-    | t_ctx_pair_left C m => t_ctx_pair_left (ctx_open_ee_rec (S K) f C)
-                                             (open_ee_rec K f m)
-    | t_ctx_pair_right m C => t_ctx_pair_right (open_ee_rec K f m)
-                                               (ctx_open_ee_rec (S K) f C)
-    | t_ctx_abs t C  => t_ctx_abs t (ctx_open_ee_rec (S K) f C)
-    | t_ctx_if C m1 m2 => t_ctx_if (ctx_open_ee_rec K f C)
-                                   (open_ee_rec K f m1)
-                                   (open_ee_rec K f m2)
-    | t_ctx_if_true m1 C m2 => t_ctx_if_true (open_ee_rec K f m1)
-                                             (ctx_open_ee_rec K f C)
-                                             (open_ee_rec K f m2)
-    | t_ctx_if_false m1 m2 C => t_ctx_if_false (open_ee_rec K f m1)
-                                               (open_ee_rec K f m2)
-                                               (ctx_open_ee_rec K f C)
-    | t_ctx_let_pair1 C m => t_ctx_let_pair1 (ctx_open_ee_rec K f C)
-                                             (open_ee_rec K f m)
-    | t_ctx_let_pair2 C m => t_ctx_let_pair2 (ctx_open_ee_rec K f C)
-                                             (open_ee_rec K f m)
-    | t_ctx_let_exp1 m C => t_ctx_let_exp1 (open_ee_rec K f m)
-                                           (ctx_open_ee_rec K f C)
-    | t_ctx_let_exp2 m C => t_ctx_let_exp2 (open_ee_rec K f m)
-                                           (ctx_open_ee_rec (S K) f C)
-    | t_ctx_app1 C t m => t_ctx_app1 (ctx_open_ee_rec K f C) t
-                                     (open_ee_rec K f m)
-    | t_ctx_app2 m t C => t_ctx_app2 (open_ee_rec K f m) t
-                                     (ctx_open_ee_rec K f C)
-
-    | ctx_st C s => ctx_st (ctx_open_ee_rec K f C) s
-    | ctx_ts C s m => ctx_ts (ctx_open_ee_rec K f C) s (open_ee_rec (S K) f m)
+    | t_ctx_pair_left C m => t_ctx_pair_left (ctx_open_ee_rec isS (St K) f C)
+                                             (t_open_ee_rec K f m)
+    | t_ctx_pair_right m C => t_ctx_pair_right (t_open_ee_rec K f m)
+                                               (ctx_open_ee_rec isS (St K) f C)
+    | t_ctx_abs t C  => t_ctx_abs t (ctx_open_ee_rec isS (St K) f C)
+    | t_ctx_if C m1 m2 => t_ctx_if (ctx_open_ee_rec isS K f C)
+                                   (t_open_ee_rec K f m1)
+                                   (t_open_ee_rec K f m2)
+    | t_ctx_if_true m1 C m2 => t_ctx_if_true (t_open_ee_rec K f m1)
+                                             (ctx_open_ee_rec isS K f C)
+                                             (t_open_ee_rec K f m2)
+    | t_ctx_if_false m1 m2 C => t_ctx_if_false (t_open_ee_rec K f m1)
+                                               (t_open_ee_rec K f m2)
+                                               (ctx_open_ee_rec isS K f C)
+    | t_ctx_let_pair1 C m => t_ctx_let_pair1 (ctx_open_ee_rec isS K f C)
+                                             (t_open_ee_rec K f m)
+    | t_ctx_let_pair2 C m => t_ctx_let_pair2 (ctx_open_ee_rec isS K f C)
+                                             (t_open_ee_rec K f m)
+    | t_ctx_let_exp1 m C => t_ctx_let_exp1 (t_open_ee_rec K f m)
+                                           (ctx_open_ee_rec isS K f C)
+    | t_ctx_let_exp2 m C => t_ctx_let_exp2 (t_open_ee_rec K f m)
+                                           (ctx_open_ee_rec isS (St K) f C)
+    | t_ctx_app1 C t m => t_ctx_app1 (ctx_open_ee_rec isS K f C) t
+                                     (t_open_ee_rec K f m)
+    | t_ctx_app2 m t C => t_ctx_app2 (t_open_ee_rec K f m) t
+                                     (ctx_open_ee_rec isS K f C)
+    (* boundary contexts *)
+    | ctx_st C s => ctx_st (ctx_open_ee_rec isS K f C) s
+    | ctx_ts C s m => ctx_ts (ctx_open_ee_rec isS K f C) s
+                             (t_open_ee_rec (St K) f m)
   end.
 
 Fixpoint ctx_open_te_rec (K : nat) (t' : typ) (C : ctx) {struct C} : ctx :=
   match C with
+    (* source contexts *)
     | s_ctx_hole => s_ctx_hole
     | s_ctx_if C e2 e3 => s_ctx_if (ctx_open_te_rec K t' C)
                                    (open_te_rec K t' e2)
@@ -359,6 +365,7 @@ Fixpoint ctx_open_te_rec (K : nat) (t' : typ) (C : ctx) {struct C} : ctx :=
                                                (open_te_rec K t' e2)
                                                (ctx_open_te_rec K t' C)
 
+    (* target contexts *)
     | t_ctx_hole => t_ctx_hole
     | t_ctx_pair_left C m => t_ctx_pair_left (ctx_open_te_rec (S K) t' C)
                                              (open_te_rec K t' m)
@@ -389,12 +396,13 @@ Fixpoint ctx_open_te_rec (K : nat) (t' : typ) (C : ctx) {struct C} : ctx :=
     | t_ctx_app2 m t C => t_ctx_app2 (open_te_rec K t' m)
                                      (open_tt_rec (S K) t' t)
                                      (ctx_open_te_rec K t' C)
-
+    (* boundary contexts *)
     | ctx_st C s => ctx_st (ctx_open_te_rec K t' C) s
     | ctx_ts C s m => ctx_ts (ctx_open_te_rec K t' C) s (open_te_rec (S K) t' m)
   end.
 
-Definition ctx_open_ee C m := ctx_open_ee_rec 0 m C.
+Definition t_ctx_open_ee C m := ctx_open_ee_rec False 0 m C.
+Definition s_ctx_open_ee C m := ctx_open_ee_rec True 0 m C.
 Definition ctx_open_te C t := ctx_open_te_rec 0 t C.
 Definition t_ctx_open_ee_var C x := ctx_open_ee C (t_trm_fvar x).
 Definition t_ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
