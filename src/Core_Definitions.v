@@ -401,24 +401,24 @@ Fixpoint ctx_open_te_rec (K : nat) (t' : typ) (C : ctx) {struct C} : ctx :=
     | ctx_ts C s m => ctx_ts (ctx_open_te_rec K t' C) s (open_te_rec (S K) t' m)
   end.
 
-Definition t_ctx_open_ee C m := ctx_open_ee_rec False 0 m C.
-Definition s_ctx_open_ee C m := ctx_open_ee_rec True 0 m C.
+Definition t_ctx_open_ee C m := ctx_open_ee_rec false 0 m C.
+Definition s_ctx_open_ee C m := ctx_open_ee_rec true 0 m C.
 Definition ctx_open_te C t := ctx_open_te_rec 0 t C.
-Definition t_ctx_open_ee_var C x := ctx_open_ee C (t_trm_fvar x).
+Definition t_ctx_open_ee_var C x := t_ctx_open_ee C (t_trm_fvar x).
 Definition t_ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
-Definition s_ctx_open_ee_var C x := ctx_open_ee C (s_trm_fvar x).
-Definition s_ctx_open_te_var C X := ctx_open_te C (s_typ_fvar X).
+Definition s_ctx_open_ee_var C x := s_ctx_open_ee C (s_trm_fvar x).
+
 
 (* Fill a context with a term *)
 Fixpoint plug (C : ctx) (m : trm) : trm :=
   match C with
-  | s_ctx_hole => e
-  | s_ctx_if C' e1 e2 => s_trm_if (plug C' e) e1 e2
-  | s_ctx_app1 C' e' => s_trm_app (plug C' e) e'
-  | s_ctx_app2 v C' => s_trm_app v (plug C' e)
-  | s_ctx_abs T C' => s_trm_abs T (plug C' e)
-  | s_ctx_if_true e1 C' e3 => s_trm_if e1 (plug C' e) e3
-  | s_ctx_if_false e1 e2 C' => s_trm_if e1 e2 (plug C' e)
+  | s_ctx_hole => m
+  | s_ctx_if C' e1 e2 => s_trm_if (plug C' m) e1 e2
+  | s_ctx_app1 C' e' => s_trm_app (plug C' m) e'
+  | s_ctx_app2 v C' => s_trm_app v (plug C' m)
+  | s_ctx_abs T C' => s_trm_abs T (plug C' m)
+  | s_ctx_if_true e1 C' e3 => s_trm_if e1 (plug C' m) e3
+  | s_ctx_if_false e1 e2 C' => s_trm_if e1 e2 (plug C' m)
 
   | t_ctx_hole => m
   | t_ctx_pair_left C' m1 => t_trm_pair (plug C' m) m1
