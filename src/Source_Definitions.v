@@ -85,7 +85,7 @@ Inductive s_eval_context : ctx -> Prop :=
   | s_eval_context_app2 : forall v E,
       s_value v -> s_eval_context E -> s_eval_context (s_ctx_app2 v E).
 
-Inductive context : ctx -> Prop :=
+Inductive s_context : ctx -> Prop :=
   | s_context_hole : s_context s_ctx_hole
   | s_context_if : forall C e1 e2,
       s_context C -> s_term e1 -> s_term e2 -> s_context (s_ctx_if C e1 e2)

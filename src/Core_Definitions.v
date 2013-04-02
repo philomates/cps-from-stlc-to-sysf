@@ -339,45 +339,10 @@ Definition ctx_open_ee C m := ctx_open_ee_rec 0 m C.
 Definition ctx_open_te C t := ctx_open_te_rec 0 t C.
 Definition t_ctx_open_ee_var C x := ctx_open_ee C (t_trm_fvar x).
 Definition t_ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
-
-(* TODO: Environments *)
+Definition s_ctx_open_ee_var C x := ctx_open_ee C (s_trm_fvar x).
+Definition s_ctx_open_te_var C X := ctx_open_te C (s_typ_fvar X).
 
 (* TODO: Contexts *)
-
-(* contexts *)
-
-(* TODO: add the contexts for target terms *)
-Inductive ctx : Set :=
-  (* evaluation and general contexts *)
-  | s_ctx_hole : ctx
-  | s_ctx_if : ctx -> trm -> trm -> ctx
-  | s_ctx_app1 : ctx -> trm -> ctx
-  | s_ctx_app2 : trm -> ctx -> ctx
-  (* general contexts only *)
-  | s_ctx_abs : type -> ctx -> ctx
-  | s_ctx_if_true : trm -> ctx -> trm -> ctx
-  | s_ctx_if_false : trm -> trm -> ctx -> ctx.
-
-Fixpoint ctx_open_rec (k : nat) (f : trm) (C : ctx) {struct C} : ctx :=
-  match C with
-    | ctx_hole => ctx_hole
-    | ctx_if C e2 e3 => ctx_if (ctx_open_rec k f C)
-                               (open_rec k f e2)
-                               (open_rec k f e3)
-    | ctx_app1 C e => ctx_app1 (ctx_open_rec k f C) (open_rec k f e)
-    | ctx_app2 e C => ctx_app2 (open_rec k f e) (ctx_open_rec k f C)
-    | ctx_abs T C  => ctx_abs T (ctx_open_rec (S k) f C)
-    | ctx_if_true e1 C e3 => ctx_if_true (open_rec k f e1)
-                                         (ctx_open_rec k f C)
-                                         (open_rec k f e3)
-    | ctx_if_false e1 e2 C => ctx_if_false (open_rec k f e1)
-                                           (open_rec k f e2)
-                                           (ctx_open_rec k f C)
-  end.
-
-Definition ctx_open C e := ctx_open_rec 0 e C.
-(* TODO: Define version for s_trm_fvar and t_trm_fvar *) 
-Definition ctx_open_var C x := ctx_open C (trm_fvar x).
 
 Fixpoint plug (C : ctx) (e : trm) : trm :=
   match C with
@@ -392,5 +357,6 @@ Fixpoint plug (C : ctx) (e : trm) : trm :=
 
 (* end of contexts *)
 
+(* TODO: Environments *)
 (* TODO: Reduction rules *)
 (* TODO: Equivalence *)
