@@ -216,7 +216,7 @@ Inductive ctx : Set :=
   | s_ctx_app1 : ctx -> trm -> ctx
   | s_ctx_app2 : trm -> ctx -> ctx
   (* general contexts only *)
-  | s_ctx_abs : type -> ctx -> ctx
+  | s_ctx_abs : typ -> ctx -> ctx
   | s_ctx_if_true : trm -> ctx -> trm -> ctx
   | s_ctx_if_false : trm -> trm -> ctx -> ctx
   (* evaluation context: CPS makes this simple *)
@@ -239,7 +239,7 @@ Inductive ctx : Set :=
   | t_ctx_app2 : trm -> typ -> ctx -> ctx.
 
 (* Opening of contexts *)
-Fixpoint ctx_open_ee_rec (k : nat) (f : trm) (C : ctx) {struct C} : ctx :=
+Fixpoint ctx_open_ee_rec (K : nat) (f : trm) (C : ctx) {struct C} : ctx :=
   match C with
     | s_ctx_hole => s_ctx_hole
     | s_ctx_if C e2 e3 => s_ctx_if (ctx_open_ee_rec K f C)
@@ -332,8 +332,8 @@ Fixpoint ctx_open_te_rec (K : nat) (t' : typ) (C : ctx) {struct C} : ctx :=
 
 Definition ctx_open_ee C m := ctx_open_ee_rec 0 m C.
 Definition ctx_open_te C t := ctx_open_te_rec 0 t C.
-Definition ctx_open_ee_var C x := ctx_open_ee C (trm_fvar x).
-Definition ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
+Definition t_ctx_open_ee_var C x := ctx_open_ee C (t_trm_fvar x).
+Definition t_ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
 
 (* TODO: Reduction rules *)
 (* TODO: Equivalence *)
