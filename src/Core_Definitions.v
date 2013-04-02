@@ -151,8 +151,6 @@ Definition open_ee t u := open_ee_rec 0 u t.
 Definition t_open_te_var e X := (open_te e (t_typ_fvar X)).
 (* changing type vars in a type *)
 Definition t_open_tt_var T X := (open_tt T (t_typ_fvar X)).
-(* changing a term var in a term *)
-Definition s_open_ee_var e x := (open_ee e (s_trm_fvar x)).
 Definition t_open_ee_var e x := (open_ee e (t_trm_fvar x)).
 
 (* Syntax of types *)
@@ -169,36 +167,9 @@ Inductive t_type : typ -> Prop :=
       (forall X, X \notin L -> t_type (t_open_tt_var T2 X)) ->
       t_type (t_typ_arrow T1 T2).
 
-Inductive s_type : typ -> Prop :=
-  | s_type_bool : s_type s_typ_bool
-  | s_type_arrow : forall T1 T2, s_type (s_typ_arrow T1 T2).
-
-
 Inductive type : typ -> Prop :=
   | type_t : forall t, t_type t -> type t
   | type_s : forall t, s_type t -> type t.
-
-
-(* Source terms *)
-Inductive s_term : trm -> Prop :=
-  | s_term_value : forall v, s_value v -> s_term v
-  | s_term_if : forall e1 e2 e3,
-      s_term e1 -> s_term e2 -> s_term e3 ->
-      s_term (s_trm_if e1 e2 e3)
-  | s_term_app : forall e1 e2,
-      s_term e1 -> s_term e2 ->
-      s_term (s_trm_app e1 e2)
-
-with s_value : trm -> Prop :=
-  | s_value_var : forall x, s_value (s_trm_fvar x)
-  | s_value_true : s_value s_trm_true
-  | s_value_false : s_value s_trm_false
-  | s_value_abs  : forall L T e,
-      (forall x, x \notin L -> s_term (s_open_ee_var e x)) ->
-      s_value (s_trm_abs T e).
-
-Scheme s_term_mut := Induction for s_term Sort Prop
-with s_value_mut := Induction for s_value Sort Prop.
 
 (* Target terms *)
 Inductive t_term : trm -> Prop :=
@@ -245,6 +216,56 @@ Inductive term : trm -> Prop :=
   | term_s : forall t, s_term t -> term t.
 
 (* TODO: Environments *)
+
 (* TODO: Contexts *)
+
+(* contexts *)
+
+(* TODO: add the contexts for target terms *)
+Inductive ctx : Set :=
+  (* evaluation and general contexts *)
+  | s_ctx_hole : ctx
+  | s_ctx_if : ctx -> trm -> trm -> ctx
+  | s_ctx_app1 : ctx -> trm -> ctx
+  | s_ctx_app2 : trm -> ctx -> ctx
+  (* general contexts only *)
+  | s_ctx_abs : type -> ctx -> ctx
+  | s_ctx_if_true : trm -> ctx -> trm -> ctx
+  | s_ctx_if_false : trm -> trm -> ctx -> ctx.
+
+Fixpoint ctx_open_rec (k : nat) (f : trm) (C : ctx) {struct C} : ctx :=
+  match C with
+    | ctx_hole => ctx_hole
+    | ctx_if C e2 e3 => ctx_if (ctx_open_rec k f C)
+                               (open_rec k f e2)
+                               (open_rec k f e3)
+    | ctx_app1 C e => ctx_app1 (ctx_open_rec k f C) (open_rec k f e)
+    | ctx_app2 e C => ctx_app2 (open_rec k f e) (ctx_open_rec k f C)
+    | ctx_abs T C  => ctx_abs T (ctx_open_rec (S k) f C)
+    | ctx_if_true e1 C e3 => ctx_if_true (open_rec k f e1)
+                                         (ctx_open_rec k f C)
+                                         (open_rec k f e3)
+    | ctx_if_false e1 e2 C => ctx_if_false (open_rec k f e1)
+                                           (open_rec k f e2)
+                                           (ctx_open_rec k f C)
+  end.
+
+Definition ctx_open C e := ctx_open_rec 0 e C.
+(* TODO: Define version for s_trm_fvar and t_trm_fvar *) 
+Definition ctx_open_var C x := ctx_open C (trm_fvar x).
+
+Fixpoint plug (C : ctx) (e : trm) : trm :=
+  match C with
+  | ctx_hole => e
+  | ctx_if C' e1 e2 => trm_if (plug C' e) e1 e2
+  | ctx_app1 C' e' => trm_app (plug C' e) e'
+  | ctx_app2 v C' => trm_app v (plug C' e)
+  | ctx_abs T C' => trm_abs T (plug C' e)
+  | ctx_if_true e1 C' e3 => trm_if e1 (plug C' e) e3
+  | ctx_if_false e1 e2 C' => trm_if e1 e2 (plug C' e)
+  end.
+
+(* end of contexts *)
+
 (* TODO: Reduction rules *)
 (* TODO: Equivalence *)
