@@ -6,6 +6,7 @@
 
 Set Implicit Arguments.
 Require Import LibLN.
+Require Import EqNat.
 Implicit Type x : var.
 Implicit Type X : var.
 
@@ -63,7 +64,7 @@ Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) {struct t} : typ :=
   | t_typ_bool        => t_typ_bool
   | t_typ_pair t1 t2  => t_typ_pair (open_tt_rec K t' t1)
                                     (open_tt_rec K t' t2)
-  | t_typ_bvar N      => If K = N then t' else (t_typ_bvar N)
+  | t_typ_bvar N      => if beq_nat K N then t' else (t_typ_bvar N)
   | t_typ_fvar X      => t_typ_fvar X
   | t_typ_arrow t1 t2 => t_typ_arrow (open_tt_rec (S K) t' t1)
                                      (open_tt_rec (S K) t' t2)
@@ -115,48 +116,94 @@ Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) {struct e} : trm :=
 
 Definition open_te e t' := open_te_rec 0 t' e. (* e [t' / 0] *)
 
-(** Opening up a term binder occuring in a term *)
-Fixpoint open_ee_rec (k : nat) (f : trm) (e : trm) {struct e} : trm :=
+(** Opening up a source-language term binder *)
+Fixpoint s_open_ee_rec (k : nat) (e' : trm) (e : trm) { struct e} : trm :=
   match e with
-  | s_trm_bvar i      => If k = i then f else (s_trm_bvar i)
+  (* source terms *)
+  | s_trm_bvar i      => if beq_nat k i then e' else (s_trm_bvar i)
   | s_trm_fvar x      => s_trm_fvar x
   | s_trm_true        => s_trm_true
   | s_trm_false       => s_trm_false
-  | s_trm_abs t e1    => s_trm_abs t (open_ee_rec (S k) f e1)
-  | s_trm_if v e1 e2  => s_trm_if (open_ee_rec k f v)
-                                  (open_ee_rec k f e1)
-                                  (open_ee_rec k f e2)
-  | s_trm_app e1 e2   => s_trm_app (open_ee_rec k f e1)
-                                   (open_ee_rec k f e2)
-  | t_trm_bvar i      => If k = i then f else (t_trm_bvar i)
+     (* s_trm_abs is the only binding form we care about here *)
+  | s_trm_abs s e     => s_trm_abs s (s_open_ee_rec (S k) e' e)
+  | s_trm_if e1 e2 e3 => s_trm_if (s_open_ee_rec k e' e1)
+                                  (s_open_ee_rec k e' e2)
+                                  (s_open_ee_rec k e' e3)
+  | s_trm_app e1 e2   => s_trm_app (s_open_ee_rec k e' e1)
+                                   (s_open_ee_rec k e' e2)
+  (* target terms *)
+  | t_trm_bvar i      => t_trm_bvar i
   | t_trm_fvar x      => t_trm_fvar x
   | t_trm_true        => t_trm_true
   | t_trm_false       => t_trm_false
-  | t_trm_pair v1 v2  => t_trm_pair (open_ee_rec k f v1) (open_ee_rec k f v2)
-  | t_trm_abs t e1    => t_trm_abs t (open_ee_rec (S k) f e1)
-  | t_trm_if v e1 e2  => t_trm_if (open_ee_rec k f v)
-                                  (open_ee_rec k f e1)
-                                  (open_ee_rec k f e2)
-  | t_trm_let_fst v e => t_trm_let_fst (open_ee_rec k f v)
-                                       (open_ee_rec (S k) f e)
-  | t_trm_let_snd v e => t_trm_let_snd (open_ee_rec k f v)
-                                       (open_ee_rec (S k) f e)
-  | t_trm_app e1 t e2 => t_trm_app (open_ee_rec k f e1)
+  | t_trm_pair u1 u2  => t_trm_pair (s_open_ee_rec k e' u1)
+                                    (s_open_ee_rec k e' u2)
+  | t_trm_abs t m     => t_trm_abs t (s_open_ee_rec k e' m)
+  | t_trm_if u m1 m2  => t_trm_if (s_open_ee_rec k e' u)
+                                  (s_open_ee_rec k e' m1)
+                                  (s_open_ee_rec k e' m2)
+  | t_trm_let_fst u m => t_trm_let_fst (s_open_ee_rec k e' u)
+                                       (s_open_ee_rec k e' m)
+  | t_trm_let_snd u m => t_trm_let_snd (s_open_ee_rec k e' u)
+                                       (s_open_ee_rec k e' m)
+  | t_trm_app m1 t m2 => t_trm_app (s_open_ee_rec k e' m1)
                                    t
-                                   (open_ee_rec k f e2)
-  | trm_st e t        => trm_st (open_ee_rec k f e) t
-  | trm_ts e1 t e2    => trm_ts (open_ee_rec k f e1) t (open_ee_rec k f e2)
+                                   (s_open_ee_rec k e' m2)
+  (* boundary terms *)
+  | trm_st m t        => trm_st (s_open_ee_rec k e' m) t
+  | trm_ts e t m      => trm_ts (s_open_ee_rec k e' e) t (s_open_ee_rec k e' m)
   end.
 
-Definition open_ee t u := open_ee_rec 0 u t.
+Definition s_open_ee e e' := s_open_ee_rec 0 e' e. (* e [e' / 0] *)
+
+(** Opening up a target-language term binder *)
+Fixpoint t_open_ee_rec (k : nat) (m' : trm) (e : trm) {struct e} : trm :=
+  match e with
+  (* source terms *)
+  | s_trm_bvar i      => s_trm_bvar i
+  | s_trm_fvar x      => s_trm_fvar x
+  | s_trm_true        => s_trm_true
+  | s_trm_false       => s_trm_false
+  | s_trm_abs s e     => s_trm_abs s (t_open_ee_rec k m' e)
+  | s_trm_if u e1 e2  => s_trm_if (t_open_ee_rec k m' u)
+                                  (t_open_ee_rec k m' e1)
+                                  (t_open_ee_rec k m' e2)
+  | s_trm_app e1 e2   => s_trm_app (t_open_ee_rec k m' e1)
+                                   (t_open_ee_rec k m' e2)
+  (* target terms *)
+  | t_trm_bvar i      => if beq_nat k i then m' else (t_trm_bvar i)
+  | t_trm_fvar x      => t_trm_fvar x
+  | t_trm_true        => t_trm_true
+  | t_trm_false       => t_trm_false
+  | t_trm_pair u1 u2  => t_trm_pair (t_open_ee_rec k m' u1)
+                                    (t_open_ee_rec k m' u2)
+  | t_trm_abs t m     => t_trm_abs t (t_open_ee_rec (S k) m' m)
+  | t_trm_if u m1 m2  => t_trm_if (t_open_ee_rec k m' u)
+                                  (t_open_ee_rec k m' m1)
+                                  (t_open_ee_rec k m' m2)
+  | t_trm_let_fst u m => t_trm_let_fst (t_open_ee_rec k m' u)
+                                       (t_open_ee_rec (S k) m' m)
+  | t_trm_let_snd u m => t_trm_let_snd (t_open_ee_rec k m' u)
+                                       (t_open_ee_rec (S k) m' m)
+  | t_trm_app m1 t m2 => t_trm_app (t_open_ee_rec k m' m1)
+                                   t
+                                   (t_open_ee_rec k m' m2)
+  (* boundary terms *)
+  | trm_st m t        => trm_st (t_open_ee_rec k m' m) t
+  | trm_ts e t m      => trm_ts (t_open_ee_rec k m' e) t (t_open_ee_rec k m' m)
+  end.
+
+Definition t_open_ee e m' := t_open_ee_rec 0 m' e. (* e [m' / 0] *)
 
 (** Notation for opening up binders with type or term variables *)
 
 (* changing type vars in a term *)
-Definition t_open_te_var e X := (open_te e (t_typ_fvar X)).
+Definition open_te_var e X := (open_te e (t_typ_fvar X)).
 (* changing type vars in a type *)
-Definition t_open_tt_var T X := (open_tt T (t_typ_fvar X)).
-Definition t_open_ee_var e x := (open_ee e (t_trm_fvar x)).
+Definition open_tt_var T X := (open_tt T (t_typ_fvar X)).
+(* changing a term var in a term *)
+Definition s_open_ee_var e x := (s_open_ee e (s_trm_fvar x)).
+Definition t_open_ee_var e x := (t_open_ee e (t_trm_fvar x)).
 
 (* Syntax of types *)
 Inductive t_type : typ -> Prop :=
