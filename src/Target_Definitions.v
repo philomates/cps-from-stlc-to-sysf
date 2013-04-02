@@ -1,7 +1,7 @@
 (***************************************************************************
 * Preservation and Progress for CPS System-F - Definitions                 *
 * Target language present in Ahmed & Blume ICFP 2011                       *
-* William J. Bowman, Phillip Mates & James t. Perconti                     *
+* William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
 Set Implicit Arguments.
