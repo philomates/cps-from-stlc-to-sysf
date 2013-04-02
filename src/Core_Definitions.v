@@ -156,8 +156,6 @@ Definition open_ee t u := open_ee_rec 0 u t.
 Definition t_open_te_var e X := (open_te e (t_typ_fvar X)).
 (* changing type vars in a type *)
 Definition t_open_tt_var T X := (open_tt T (t_typ_fvar X)).
-(* changing a term var in a term *)
-Definition s_open_ee_var e x := (open_ee e (s_trm_fvar x)).
 Definition t_open_ee_var e x := (open_ee e (t_trm_fvar x)).
 
 (* Syntax of types *)
@@ -174,38 +172,45 @@ Inductive t_type : typ -> Prop :=
       (forall X, X \notin L -> t_type (t_open_tt_var T2 X)) ->
       t_type (t_typ_arrow T1 T2).
 
-Inductive s_type : typ -> Prop :=
-  | s_type_bool : s_type s_typ_bool
-  | s_type_arrow : forall T1 T2, s_type (s_typ_arrow T1 T2).
-
-
 Inductive type : typ -> Prop :=
   | type_t : forall t, t_type t -> type t
   | type_s : forall t, s_type t -> type t.
 
+(* Target terms *)
+Inductive t_term : trm -> Prop :=
+  | t_term_value : forall v, t_value v -> t_term v
+  | t_term_if : forall v e1 e2,
+      t_value v ->
+      t_term e1 ->
+      t_term e2 ->
+      t_term (t_trm_if v e1 e2)
+  | t_term_let_fst : forall L v e,
+      t_value v ->
+      (forall x, x \notin L -> t_term (t_open_ee_var e x)) ->
+      t_term (t_trm_let_fst v e)
+  | t_term_let_snd : forall L v e,
+      t_value v ->
+      (forall x, x \notin L -> t_term (t_open_ee_var e x)) ->
+      t_term (t_trm_let_snd v e)
+  | t_term_app : forall T v1 v2,
+      t_value v1 ->
+      t_type T ->
+      t_value v2 ->
+      t_term (t_trm_app v1 T v2)
 
-(* Source terms *)
-Inductive s_term : trm -> Prop :=
-  | s_term_value : forall v, s_value v -> s_term v
-  | s_term_if : forall e1 e2 e3,
-      s_term e1 -> s_term e2 -> s_term e3 ->
-      s_term (s_trm_if e1 e2 e3)
-  | s_term_app : forall e1 e2,
-      s_term e1 -> s_term e2 ->
-      s_term (s_trm_app e1 e2)
-
-with s_value : trm -> Prop :=
-  | s_value_var : forall x, s_value (s_trm_fvar x)
-  | s_value_true : s_value s_trm_true
-  | s_value_false : s_value s_trm_false
-  | s_value_abs  : forall L T e,
-      (forall x, x \notin L -> s_term (s_open_ee_var e x)) ->
-      s_value (s_trm_abs T e).
-
-Scheme s_term_mut := Induction for s_term Sort Prop
-with s_value_mut := Induction for s_value Sort Prop.
-
-(* TODO: Environments *)
+with t_value : trm -> Prop :=
+  | t_value_var : forall x,
+      t_value (t_trm_fvar x)
+  | t_value_true : t_value t_trm_true
+  | t_value_false : t_value t_trm_false
+  | t_value_pair : forall v1 v2,
+      t_value v1 -> t_value v2 -> t_value (t_trm_pair v1 v2)
+  | t_value_abs  : forall L T e1,
+      (forall X, X \notin L ->
+        t_type (t_open_tt_var T X)) ->
+      (forall x X, x \notin L -> X \notin L ->
+        t_term (t_open_te_var (t_open_ee_var e1 x) X)) ->
+      t_value (t_trm_abs T e1).
 
 (* Contexts *)
 Inductive ctx : Set :=
@@ -346,6 +351,8 @@ Definition ctx_open_ee C m := ctx_open_ee_rec 0 m C.
 Definition ctx_open_te C t := ctx_open_te_rec 0 t C.
 Definition t_ctx_open_ee_var C x := ctx_open_ee C (t_trm_fvar x).
 Definition t_ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
+Definition s_ctx_open_ee_var C x := ctx_open_ee C (s_trm_fvar x).
+Definition s_ctx_open_te_var C X := ctx_open_te C (s_typ_fvar X).
 
 (* Fill a context with a term *)
 Fixpoint plug (C : ctx) (m : trm) : trm :=
@@ -375,6 +382,8 @@ Fixpoint plug (C : ctx) (m : trm) : trm :=
   | ctx_st C' s => trm_st (plug C' m) s
   | ctx_ts C' s m1 => trm_ts (plug C' m) s m1
   end.
+(* end of contexts *)
 
+(* TODO: Environments *)
 (* TODO: Reduction rules *)
 (* TODO: Equivalence *)
