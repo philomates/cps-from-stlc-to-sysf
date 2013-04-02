@@ -16,10 +16,8 @@ Implicit Type X : var.
 
 Inductive s_type : typ -> Prop :=
   | s_type_bool : s_type s_typ_bool
-  | s_type_arrow : forall s1 s2, s_type (s_typ_arrow s1 s2).
-
-(* changing a term var in a term *)
-Definition s_open_ee_var e x := (open_ee e (s_trm_fvar x)).
+  | s_type_arrow : forall s1 s2, 
+      s_type s1 -> s_type s2 -> s_type (s_typ_arrow s1 s2).
 
 (* Source terms *)
 
@@ -85,6 +83,8 @@ Inductive s_eval_context : ctx -> Prop :=
   | s_eval_context_app2 : forall v E,
       s_value v -> s_eval_context E -> s_eval_context (s_ctx_app2 v E).
 
+(* TODO: santity check theorem *)
+
 Inductive s_context : ctx -> Prop :=
   | s_context_hole : s_context s_ctx_hole
   | s_context_if : forall C e1 e2,
@@ -101,6 +101,8 @@ Inductive s_context : ctx -> Prop :=
       s_term e1 -> s_context C -> s_term e3 -> s_context (s_ctx_if_true e1 C e3)
   | s_context_if_false : forall e1 e2 C,
       s_term e1 -> s_term e2 -> s_context C -> s_context (s_ctx_if_false e1 e2 C).
+
+(* TODO: santity check theorem *)
 
 (* typing for contexts *)
 
@@ -137,41 +139,48 @@ Inductive s_context_typing : ctx -> env -> typ -> env -> typ -> Prop :=
       s_context_typing C G_hole s_hole G s ->
       s_context_typing (s_ctx_if_false e1 e2 C) G_hole s_hole G s.
 
+(* TODO: santity check theorem *)
+
 (* reduction *)
 
-Inductive red_base : trm -> trm -> Prop :=
-  | red_if_true : forall e1 e2,
-      term e1 -> term e2 ->
-      red_base (trm_if trm_true e1 e2) e1
-  | red_if_false : forall e1 e2,
-      term e1 -> term e2 ->
-      red_base (trm_if trm_false e1 e2) e2
-  | red_app : forall e v T1,
-      value (trm_abs T1 e) -> value v ->
-      red_base (trm_app (trm_abs T1 e) v) (open e v).
+Inductive s_red_base : trm -> trm -> Prop :=
+  | s_red_if_true : forall e1 e2,
+      s_term e1 -> s_term e2 ->
+      s_red_base (s_trm_if s_trm_true e1 e2) e1
+  | s_red_if_false : forall e1 e2,
+      s_term e1 -> s_term e2 ->
+      s_red_base (s_trm_if s_trm_false e1 e2) e2
+  | s_red_app : forall e v T1,
+      s_value (s_trm_abs T1 e) -> s_value v ->
+      s_red_base (s_trm_app (s_trm_abs T1 e) v) (s_open_ee_var e v).
 
-Inductive red : trm -> trm -> Prop :=
-  | red_ctx : forall E e e',
-      red_base e e' -> eval_context E ->
-      red (plug E e) (plug E e').
+(* TODO: santity check theorem *)
+(* TODO: Requires definition of plug *)
 
-Inductive red_star : trm -> trm -> Prop :=
-  | red_refl : forall e, term e -> red_star e e
-  | red_step : forall e1 e2 e3,
-      red e1 e2 -> red_star e2 e3 -> red_star e1 e3.
+Inductive s_red : trm -> trm -> Prop :=
+  | s_red_ctx : forall E e e',
+      s_red_base e e' -> s_eval_context E ->
+      s_red (s_plug E e) (s_plug E e').
 
-Inductive eval : trm -> trm -> Prop :=
-  | eval_red : forall e v,
-      red_star e v -> value v -> eval e v.
+Inductive s_red_star : trm -> trm -> Prop :=
+  | s_red_refl : forall e, s_term e -> s_red_star e e
+  | s_red_step : forall e1 e2 e3,
+      s_red e1 e2 -> s_red_star e2 e3 -> s_red_star e1 e3.
+
+Inductive s_eval : trm -> trm -> Prop :=
+  | s_eval_red : forall e v,
+      s_red_star e v -> s_value v -> s_eval e v.
+
+(* TODO: I am here *)
 
 (* contextual equivalence *)
 
-Definition ctx_approx (G : env) (e1 e2 : trm) (T : type) :=
-  typing G e1 T /\ typing G e2 T /\
+Definition s_ctx_approx (G : env) (e1 e2 : trm) (T : typ) :=
+  s_typing G e1 T /\ s_typing G e2 T /\
   forall C v,
-    context_typing C G T empty type_bool ->
-    eval (plug C e1) v ->
-    eval (plug C e2) v.
+    s_context_typing C G T empty s_typ_bool ->
+    s_eval (s_plug C e1) v ->
+    s_eval (s_plug C e2) v.
 
 Definition ctx_equiv (G : env) (e1 e2 : trm) (T : type) :=
   ctx_approx G e1 e2 T /\ ctx_approx G e2 e1 T.
