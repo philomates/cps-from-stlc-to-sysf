@@ -6,8 +6,6 @@
 Set Implicit Arguments.
 Require Import LibLN.
 Require Import Core_Definitions.
-Implicit Type x : var.
-Implicit Type X : var.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)

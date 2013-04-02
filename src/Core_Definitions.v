@@ -177,8 +177,8 @@ Definition t_open_ee e m' := open_ee_rec target 0 m' e. (* e [m' / 0] *)
 
 Definition open_tt_var t X := (open_tt t (t_typ_fvar X)).
 Definition open_te_var e X := (open_te e (t_typ_fvar X)).
-Definition open_ee_svar e x := (s_open_ee e (s_trm_fvar x)).
-Definition open_ee_tvar e x := (t_open_ee e (t_trm_fvar x)).
+Definition s_open_ee_var e x := (s_open_ee e (s_trm_fvar x)).
+Definition t_open_ee_var e x := (t_open_ee e (t_trm_fvar x)).
 
 (* Contexts *)
 
