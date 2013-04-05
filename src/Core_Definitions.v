@@ -68,7 +68,7 @@ Inductive trm : Set :=
   | t_trm_ts : trm -> typ -> trm -> trm  (* let  = TS (s) e in m *).
 
 (* Opening up a type binder occuring in a type *)
-Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) {struct t} : typ :=
+Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) : typ :=
   match t with
   (* no type variables in source types *)
   | s_typ_bool        => t
@@ -85,7 +85,7 @@ Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) {struct t} : typ :=
   end.
 
 (** Opening up a type binder occuring in a term *)
-Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) {struct e} : trm :=
+Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) : trm :=
   match e with
   (* source terms *)
   | s_trm_bvar n      => s_trm_bvar n
@@ -120,9 +120,7 @@ Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) {struct e} : trm :=
   | t_trm_app m1 t m2 => t_trm_app (open_te_rec K t' m1)
                                    (open_tt_rec K t' t)
                                    (open_te_rec K t' m2)
-  | t_trm_ts e t m    => t_trm_ts (open_te_rec K t' e)
-                                  (open_tt_rec K t' t)
-                                  (open_te_rec K t' m)
+  | t_trm_ts e s m    => t_trm_ts (open_te_rec K t' e) s (open_te_rec K t' m)
   end.
 
 (** Opening up a term binder appearing in a term *)
@@ -165,8 +163,8 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
   | t_trm_app m1 t m2 => t_trm_app (open_ee_rec l k e' m1)
                                    t
                                    (open_ee_rec l k e' m2)
-  | t_trm_ts e t m    => t_trm_ts (open_ee_rec l k e' e)
-                                  t
+  | t_trm_ts e s m    => t_trm_ts (open_ee_rec l k e' e)
+                                  s
                                   (open_ee_rec l (inc_if_eq l target k) e' m)
   end.
 
@@ -362,6 +360,7 @@ Fixpoint plug (C : ctx) (e : trm) : trm :=
   | s_ctx_abs s C'          => s_trm_abs s (plug C' e)
   | s_ctx_if_true e1 C' e3  => s_trm_if e1 (plug C' e) e3
   | s_ctx_if_false e1 e2 C' => s_trm_if e1 e2 (plug C' e)
+  | s_ctx_st C' s           => s_trm_st (plug C' e) s
 
   | t_ctx_hole              => e
   | t_ctx_pair_left C' m'   => t_trm_pair (plug C' e) m'
@@ -376,10 +375,90 @@ Fixpoint plug (C : ctx) (e : trm) : trm :=
   | t_ctx_let_snd_k m' C'   => t_trm_let_snd m' (plug C' e)
   | t_ctx_app1 C' t m1      => t_trm_app (plug C' e) t m1
   | t_ctx_app2 m1 t C'      => t_trm_app m1 t (plug C' e)
-
-  | s_ctx_st C' s           => s_trm_st (plug C' e) s
   | t_ctx_ts C' s m'        => t_trm_ts (plug C' e) s m'
   | t_ctx_ts_k e' s C'      => t_trm_ts e' s (plug C' e)
   end.
 
-(* TODO: Environments *)
+(* Environments and Substitutions *)
+
+Definition env_type := LibEnv.env unit. (* Delta *)
+Definition star := tt. (* base kind '*' that all types share *)
+
+Definition env_term := LibEnv.env typ.  (* Gamma *)
+
+Definition subst_type := LibEnv.env typ. (* delta *)
+Definition subst_term := LibEnv.env trm. (* gamma *)
+
+Fixpoint subst_tt (d : subst_type) (t : typ) :=
+  match t with
+  (* no type variables in source types *)
+  | s_typ_bool        => t
+  | s_typ_arrow _ _   => t
+  (* target types *)
+  | t_typ_bvar N      => t_typ_bvar N
+  | t_typ_fvar X      => match get X d with None => t_typ_fvar X
+                           | Some t => t end
+  | t_typ_bool        => t_typ_bool
+  | t_typ_pair t1 t2  => t_typ_pair (subst_tt d t1) (subst_tt d t2)
+  | t_typ_arrow t1 t2 => t_typ_arrow (subst_tt d t1) (subst_tt d t2)
+  end.
+
+Fixpoint subst_te (d : subst_type) (e : trm) :=
+  match e with
+    | s_trm_bvar n      => s_trm_bvar n
+    | s_trm_fvar x      => s_trm_fvar x
+    | s_trm_true        => s_trm_true
+    | s_trm_false       => s_trm_false
+    | s_trm_abs s e     => s_trm_abs s (subst_te d e)
+    | s_trm_if e1 e2 e3 => s_trm_if (subst_te d e1)
+                                    (subst_te d e2)
+                                    (subst_te d e3)
+    | s_trm_app e1 e2   => s_trm_app (subst_te d e1) (subst_te d e2)
+    | s_trm_st m s      => s_trm_st (subst_te d m) s
+
+    | t_trm_bvar n      => t_trm_bvar n
+    | t_trm_fvar x      => t_trm_fvar x
+    | t_trm_true        => t_trm_true
+    | t_trm_false       => t_trm_false
+    | t_trm_pair u1 u2  => t_trm_pair (subst_te d u1) (subst_te d u2)
+    | t_trm_abs t m     => t_trm_abs (subst_tt d t) (subst_te d m)
+    | t_trm_if u m1 m2  => t_trm_if (subst_te d u)
+                                    (subst_te d m1)
+                                    (subst_te d m2)
+    | t_trm_let_fst u m => t_trm_let_fst (subst_te d u) (subst_te d m)
+    | t_trm_let_snd u m => t_trm_let_snd (subst_te d u) (subst_te d m)
+    | t_trm_app m1 t m2 => t_trm_app (subst_te d m1)
+                                     (subst_tt d t)
+                                     (subst_te d m2)
+    | t_trm_ts e s m    => t_trm_ts (subst_te d e) s (subst_te d m)
+  end.
+
+Fixpoint subst_ee (g : subst_term) (e : trm) :=
+  match e with
+    | s_trm_bvar n      => s_trm_bvar n
+    | s_trm_fvar x      => match get x g with None => s_trm_fvar x
+                             | Some v => v end
+    | s_trm_true        => s_trm_true
+    | s_trm_false       => s_trm_false
+    | s_trm_abs s e     => s_trm_abs s (subst_ee g e)
+    | s_trm_if e1 e2 e3 => s_trm_if (subst_ee g e1)
+                                    (subst_ee g e2)
+                                    (subst_ee g e3)
+    | s_trm_app e1 e2   => s_trm_app (subst_ee g e1) (subst_ee g e2)
+    | s_trm_st m s      => s_trm_st (subst_ee g m) s
+
+    | t_trm_bvar n      => t_trm_bvar n
+    | t_trm_fvar x      => match get x g with None => t_trm_fvar x
+                             | Some v => v end
+    | t_trm_true        => t_trm_true
+    | t_trm_false       => t_trm_false
+    | t_trm_pair u1 u2  => t_trm_pair (subst_ee g u1) (subst_ee g u2)
+    | t_trm_abs t m     => t_trm_abs t (subst_ee g m)
+    | t_trm_if u m1 m2  => t_trm_if (subst_ee g u)
+                                    (subst_ee g m1)
+                                    (subst_ee g m2)
+    | t_trm_let_fst u m => t_trm_let_fst (subst_ee g u) (subst_ee g m)
+    | t_trm_let_snd u m => t_trm_let_snd (subst_ee g u) (subst_ee g m)
+    | t_trm_app m1 t m2 => t_trm_app (subst_ee g m1) t (subst_ee g m2)
+    | t_trm_ts e s m    => t_trm_ts (subst_ee g e) s (subst_ee g m)
+  end.
