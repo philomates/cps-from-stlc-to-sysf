@@ -43,6 +43,12 @@ with s_value_mut := Induction for s_value Sort Prop.
 Definition s_ok (G : env_term) : Prop :=
   ok G /\ forall x s, binds x s G -> s_type s.
 
+(* Inductive t_ok : env_type -> env_term -> Prop :=
+  | t_ok_empty : forall D,
+      ok D -> t_ok D empty
+  | t_ok_typ : forall D G x t,
+      t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t). *)
+
 Inductive s_typing : env_term -> trm -> typ -> Prop :=
   | s_typing_var : forall G x s,
       s_ok G -> binds x s G -> s_typing G (s_trm_fvar x) s
@@ -60,6 +66,8 @@ Inductive s_typing : env_term -> trm -> typ -> Prop :=
   | s_typing_app : forall G e1 e2 s1 s2,
       s_typing G e1 (s_typ_arrow s1 s2) -> s_typing G e2 s1 ->
       s_typing G (s_trm_app e1 e2) s2.
+
+Hint Constructors s_type s_term s_typing. 
 
 (* contexts *)
 
