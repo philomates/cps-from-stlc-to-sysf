@@ -132,14 +132,14 @@ Inductive t_context : ctx -> Prop :=
       t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if_true m1 C m2)
   | t_context_if_false : forall C m1 m2,
       t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if_false m1 m2 C)
-  | t_context_let_pair1 : forall C m,
-      t_context C -> t_term m -> t_context (t_ctx_let_pair1 C m)
-  | t_context_let_pair2 : forall C m,
-      t_context C -> t_term m -> t_context (t_ctx_let_pair2 C m)
-  | t_context_let_exp1 : forall C u,
-      t_context C -> t_value u -> t_context (t_ctx_let_exp1 u C)
-  | t_context_let_exp2 : forall C u,
-      t_context C -> t_value u -> t_context (t_ctx_let_exp2 u C)
+  | t_context_let_fst : forall C m,
+      t_context C -> t_term m -> t_context (t_ctx_let_fst C m)
+  | t_context_let_snd : forall C m,
+      t_context C -> t_term m -> t_context (t_ctx_let_snd C m)
+  | t_context_let_fst_k : forall C u,
+      t_context C -> t_value u -> t_context (t_ctx_let_fst_k u C)
+  | t_context_let_snd_k : forall C u,
+      t_context C -> t_value u -> t_context (t_ctx_let_snd_k u C)
   | t_context_app1 : forall C t u,
       t_context C -> t_type t -> t_value u -> t_context (t_ctx_app1 C t u)
   | t_context_app2 : forall C t u,
@@ -162,10 +162,10 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
                      (t_typ_pair t1 t2)
   | t_context_typing_abs : forall L C D_hole G_hole T_hole D G t1 t2,
       (forall x X, x \notin L -> X \notin L ->
-        t_context_typing (t_ctx_open_te_var (t_ctx_open_ee_var C x) X)
+        t_context_typing (ctx_open_te_var (t_ctx_open_ee_var C x) X)
                        D_hole G_hole T_hole
-                       (D & X ~ star) (G & x ~ (t_open_tt_var t1 X))
-                       (t_open_tt_var t2 X)) ->
+                       (D & X ~ star) (G & x ~ (open_tt_var t1 X))
+                       (open_tt_var t2 X)) ->
       t_context_typing (t_ctx_abs t1 C) D_hole G_hole T_hole D G (t_typ_arrow t1 t2)
   | t_context_typing_if : forall C D_hole G_hole T_hole D G m2 e3 t,
       t_context_typing C D_hole G_hole T_hole D G t_typ_bool ->
@@ -180,26 +180,26 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
       t_typing D G m1 t_typ_bool -> t_typing D G m2 t ->
       t_context_typing C D_hole G_hole T_hole D G t ->
       t_context_typing (t_ctx_if_false m1 m2 C) D_hole G_hole T_hole D G t
-  | t_context_typing_let_pair1 : forall L C D_hole G_hole T_hole D G m t1 t2 t,
+  | t_context_typing_let_fst : forall L C D_hole G_hole T_hole D G m t1 t2 t,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_typing D (G & x ~ t1) (t_open_ee_var m x) t) ->
-      t_context_typing (t_ctx_let_pair1 C m) D_hole G_hole T_hole D G t
-  | t_context_typing_let_pair2 : forall L C D_hole G_hole T_hole D G m t1 t2 t,
+      t_context_typing (t_ctx_let_fst C m) D_hole G_hole T_hole D G t
+  | t_context_typing_let_snd : forall L C D_hole G_hole T_hole D G m t1 t2 t,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
-      t_context_typing (t_ctx_let_pair2 C m) D_hole G_hole T_hole D G t
-  | t_context_typing_let_exp1 : forall L C D_hole G_hole T_hole D G u t1 t2 t,
+      t_context_typing (t_ctx_let_snd C m) D_hole G_hole T_hole D G t
+  | t_context_typing_let_fst_k : forall L C D_hole G_hole T_hole D G u t1 t2 t,
       t_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_context_typing C D_hole G_hole T_hole D (G & x ~ t1) t) ->
-      t_context_typing (t_ctx_let_exp1 u C) D_hole G_hole T_hole D G t
-  | t_context_typing_let_exp2 : forall L C D_hole G_hole T_hole D G u t1 t2 t,
+      t_context_typing (t_ctx_let_fst_k u C) D_hole G_hole T_hole D G t
+  | t_context_typing_let_snd_k : forall L C D_hole G_hole T_hole D G u t1 t2 t,
       t_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_context_typing C D_hole G_hole T_hole D (G & x ~ t2) t) ->
-      t_context_typing (t_ctx_let_exp2 u C) D_hole G_hole T_hole D G t
+      t_context_typing (t_ctx_let_snd_k u C) D_hole G_hole T_hole D G t
   | t_context_typing_app1 : forall C D_hole G_hole T_hole D G u t t1 t2,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_arrow t1 t2) ->
       t_wft D t ->
