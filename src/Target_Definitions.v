@@ -1,25 +1,32 @@
 (***************************************************************************
-* Preservation and Progress for CPS System-F - Definitions                 *
-* Target language present in Ahmed & Blume ICFP 2011                       *
+* Target language definitions From Ahmed & Blume ICFP 2011                 *
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
 Set Implicit Arguments.
 Require Import LibLN Core_Definitions.
-Implicit Types x : var.
-Implicit Types X : var.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)
 
-(** Terms as locally closed pre-terms *)
+(* Target Types *)
+
+Inductive t_type : typ -> Prop :=
+  | t_type_var : forall x, t_type (t_typ_fvar x)
+  | t_type_bool : t_type t_typ_bool
+  | t_type_pair : forall t1 t2,
+      t_type t1 -> t_type t2 -> t_type (t_typ_pair t1 t2)
+  | t_type_arrow : forall L t1 t2,
+      (forall X, X \notin L -> t_type (open_tt_var t1 X)) ->
+      (forall X, X \notin L -> t_type (open_tt_var t2 X)) ->
+      t_type (t_typ_arrow t1 t2).
+
+(* Target Terms *)
+
 Inductive t_term : trm -> Prop :=
   | t_term_value : forall u, t_value u -> t_term u
   | t_term_if : forall u m1 m2,
-      t_value u ->
-      t_term m1 ->
-      t_term m2 ->
-      t_term (t_trm_if u m1 m2)
+      t_value u -> t_term m1 -> t_term m2 -> t_term (t_trm_if u m1 m2)
   | t_term_let_fst : forall L u m,
       t_value u ->
       (forall x, x \notin L -> t_term (t_open_ee_var m x)) ->
@@ -28,70 +35,41 @@ Inductive t_term : trm -> Prop :=
       t_value u ->
       (forall x, x \notin L -> t_term (t_open_ee_var m x)) ->
       t_term (t_trm_let_snd u m)
-  | t_term_app : forall t v1 v2,
-      t_value v1 ->
-      t_type t ->
-      t_value v2 ->
-      t_term (t_trm_app v1 t v2)
+  | t_term_app : forall u1 t u2,
+      t_value u1 -> t_type t -> t_value u2 -> t_term (t_trm_app u1 t u2)
 
 with t_value : trm -> Prop :=
-  | t_value_var : forall x,
-      t_value (t_trm_fvar x)
+  | t_value_var : forall x, t_value (t_trm_fvar x)
   | t_value_true : t_value t_trm_true
   | t_value_false : t_value t_trm_false
-  | t_value_pair : forall v1 v2,
-      t_value v1 -> t_value v2 -> t_value (t_trm_pair v1 v2)
-  | t_value_abs  : forall L t m1,
-      (forall X, X \notin L ->
-        t_type (t_open_tt_var t X)) ->
+  | t_value_pair : forall u1 u2,
+      t_value u1 -> t_value u2 -> t_value (t_trm_pair u1 u2)
+  | t_value_abs  : forall L t m,
+      (forall X, X \notin L -> t_type (open_tt_var t X)) ->
       (forall x X, x \notin L -> X \notin L ->
-        t_term (t_open_te_var (t_open_ee_var m1 x) X)) ->
-      t_value (t_trm_abs t m1).
+        t_term (open_te_var (t_open_ee_var m x) X)) ->
+      t_value (t_trm_abs t m).
 
 Scheme t_term_mut := Induction for t_term Sort Prop
 with t_value_mut := Induction for t_value Sort Prop.
 
-(** Environment is an associative list of bindings. *)
-
-Definition env_term := LibEnv.env typ.
-Definition env_type := LibEnv.env unit.
-Definition star := tt.        (* base kind: '*' *)
-
-(** Well-formedness of a pre-type t in an environment E:
-  all the type variables of t must be bound via a
-  subtyping relation in E. This predicates implies
-  that t is a type *)
-
 (* Delta |- tau *)
-Inductive wft : env_type -> typ -> Prop :=
-  | wft_bool : forall D,
-      wft D t_typ_bool
-  | wft_pair : forall D t1 t2,
-      wft D t1 ->
-      wft D t2 ->
-      wft D (t_typ_pair t1 t2)
-  | wft_var : forall D X,
-      binds X star D ->
-      wft D (t_typ_fvar X)
-  | wft_arrow : forall L D t1 t2,
-      (forall X, X \notin L ->
-        wft (D & X ~ star) (t_open_tt_var t1 X)) ->
-      (forall X, X \notin L ->
-        wft (D & X ~ star) (t_open_tt_var t2 X)) ->
-      wft D (t_typ_arrow t1 t2).
-
-
-(** A environment E is well-formed if it contains no duplicate bindings
-  and if each type in it is well-formed with respect to the environment
-  it is pushed on to. *)
+Inductive t_wft : env_type -> typ -> Prop :=
+  | t_wft_var : forall D X, binds X star D -> t_wft D (t_typ_fvar X)
+  | t_wft_bool : forall D, t_wft D t_typ_bool
+  | t_wft_pair : forall D t1 t2,
+      t_wft D t1 -> t_wft D t2 -> t_wft D (t_typ_pair t1 t2)
+  | t_wft_arrow : forall L D t1 t2,
+      (forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t1 X)) ->
+      (forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t2 X)) ->
+      t_wft D (t_typ_arrow t1 t2).
 
 (* Delta |- Gamma *)
-Inductive okt : env_type -> env_term -> Prop :=
-  | okt_empty : forall D,
-      ok D ->
-      okt D empty
-  | okt_typ : forall D G x t,
-      okt D G -> wft D t -> x # G -> okt D (G & x ~ t).
+Inductive t_ok : env_type -> env_term -> Prop :=
+  | t_ok_empty : forall D,
+      ok D -> t_ok D empty
+  | t_ok_typ : forall D G x t,
+      t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t).
 
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
@@ -99,45 +77,34 @@ Inductive okt : env_type -> env_term -> Prop :=
          we need to be able to prove: D G |- m : t -> term m *)
 Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
   | t_typing_var : forall D G x t,
-      okt D G ->
-      binds x t G ->
-      t_typing D G (t_trm_fvar x) t
+      t_ok D G -> binds x t G -> t_typing D G (t_trm_fvar x) t
   | t_typing_true : forall D G,
-     okt D G ->
-     t_typing D G t_trm_true t_typ_bool
+      t_ok D G -> t_typing D G t_trm_true t_typ_bool
   | t_typing_false : forall D G,
-     okt D G ->
-     t_typing D G t_trm_false t_typ_bool
+      t_ok D G -> t_typing D G t_trm_false t_typ_bool
   | t_typing_pair : forall D G u1 u2 t1 t2,
-    t_typing D G u1 t1 ->
-    t_typing D G u2 t2 ->
-    t_value u1 ->
-    t_value u2 ->
-    t_typing D G (t_trm_pair u1 u2) (t_typ_pair t1 t2)
+      t_typing D G u1 t1 -> t_typing D G u2 t2 -> t_value u1 -> t_value u2 ->
+      t_typing D G (t_trm_pair u1 u2) (t_typ_pair t1 t2)
   | t_typing_abs : forall L D G m t1 t2,
       (forall x X, x \notin L -> X \notin L ->
         t_typing (D & X ~ star)
-               (G & x ~ (t_open_tt_var t1 X))
-               (t_open_te_var (t_open_ee_var m x) X)
-               (t_open_tt_var t2 X)) ->
+                 (G & x ~ (open_tt_var t1 X))
+                 (open_te_var (t_open_ee_var m x) X)
+                 (open_tt_var t2 X)) ->
       t_typing D G (t_trm_abs t1 m) (t_typ_arrow t1 t2)
   | t_typing_if : forall D G u m1 m2 t,
-    t_typing D G u t_typ_bool ->
-    t_typing D G m1 t ->
-    t_typing D G m2 t ->
-    t_typing D G (t_trm_if u m1 m2) t
+      t_typing D G u t_typ_bool -> t_typing D G m1 t -> t_typing D G m2 t ->
+      t_typing D G (t_trm_if u m1 m2) t
   | t_typing_let_fst : forall L D G u m t1 t2 t,
-    t_typing D G u (t_typ_pair t1 t2) ->
-    (forall x, x \notin L ->
-      t_typing D (G & x ~ t1) (t_open_ee_var m x) t) ->
-    t_typing D G (t_trm_let_fst u m) t
+      t_typing D G u (t_typ_pair t1 t2) ->
+      (forall x, x \notin L -> t_typing D (G & x ~ t1) (t_open_ee_var m x) t) ->
+      t_typing D G (t_trm_let_fst u m) t
   | t_typing_let_snd : forall L D G u m t1 t2 t,
-    t_typing D G u (t_typ_pair t1 t2) ->
-    (forall x, x \notin L ->
-      t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
-    t_typing D G (t_trm_let_snd u m) t
+      t_typing D G u (t_typ_pair t1 t2) ->
+      (forall x, x \notin L -> t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
+      t_typing D G (t_trm_let_snd u m) t
   | t_typing_app : forall D G u1 u2 t t1 t2,
-      wft D t ->
+      t_wft D t ->
       t_typing D G u1 (t_typ_arrow t1 t2) ->
       t_typing D G u2 (open_tt t1 t) ->
       t_typing D G (t_trm_app u1 t u2) (open_tt t2 t).
@@ -155,9 +122,9 @@ Inductive t_context : ctx -> Prop :=
       t_value u -> t_context C -> t_context (t_ctx_pair_right u C)
   | t_context_abs : forall L t C,
       (forall X, X \notin L ->
-        t_type (t_open_tt_var t X)) ->
+        t_type (open_tt_var t X)) ->
       (forall x X, x \notin L -> X \notin L ->
-        t_context (t_ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
+        t_context (ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
       t_context (t_ctx_abs t C)
   | t_context_if : forall C m1 m2,
       t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if C m1 m2)
@@ -181,7 +148,7 @@ Inductive t_context : ctx -> Prop :=
 (* typing for contexts *)
 Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
   | t_context_typing_hole : forall D_hole G_hole T_hole D G,
-      okt D_hole G_hole -> okt D G -> extends G_hole G ->
+      t_ok D_hole G_hole -> t_ok D G -> extends G_hole G ->
       extends D_hole D ->
       t_context_typing t_ctx_hole D_hole G_hole T_hole D G T_hole
   | t_context_typing_pair_left : forall C D_hole G_hole T_hole D G u t1 t2,
@@ -235,11 +202,11 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
       t_context_typing (t_ctx_let_exp2 u C) D_hole G_hole T_hole D G t
   | t_context_typing_app1 : forall C D_hole G_hole T_hole D G u t t1 t2,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_arrow t1 t2) ->
-      wft D t ->
+      t_wft D t ->
       t_typing D G u (open_tt t1 t) ->
       t_context_typing (t_ctx_app1 C t u) D_hole G_hole T_hole D G (open_tt t2 t)
   | t_context_typing_app2 : forall C D_hole G_hole T_hole D G u t t1 t2,
-      wft D t ->
+      t_wft D t ->
       t_typing D G u (t_typ_arrow t1 t2) ->
       t_context_typing C D_hole G_hole T_hole D G (open_tt t1 t) ->
       t_context_typing (t_ctx_app2 u t C) D_hole G_hole T_hole D G t2.

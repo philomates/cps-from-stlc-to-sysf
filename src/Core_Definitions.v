@@ -58,7 +58,7 @@ Inductive trm : Set :=
   | t_trm_pair  : trm -> trm -> trm        (* (u, u) *)
   | t_trm_abs   : typ -> trm -> trm        (* Lambda . lambda : t . m *)
   (* target non-values *)
-  | t_trm_if    : trm -> trm -> trm -> trm (* if u e e *)
+  | t_trm_if    : trm -> trm -> trm -> trm (* if u m m *)
   | t_trm_let_fst : trm -> trm -> trm      (* let  = fst u in m *)
   | t_trm_let_snd : trm -> trm -> trm      (* let  = snd u in m *)
   | t_trm_app   : trm -> typ -> trm -> trm (* u [t] u *)
