@@ -114,47 +114,65 @@ Inductive t_eval_context : ctx -> Prop :=
   | t_eval_context_hole : t_eval_context t_ctx_hole.
 
 (* Well-formed context *)
-Inductive t_context : ctx -> Prop :=
-  | t_context_hole : t_context t_ctx_hole
-  | t_context_pair_left : forall C u,
-      t_context C -> t_value u -> t_context (t_ctx_pair_left C u)
-  | t_context_pair_right : forall C u,
-      t_value u -> t_context C -> t_context (t_ctx_pair_right u C)
-  | t_context_abs : forall L t C,
-      (forall X, X \notin L ->
-        t_type (open_tt_var t X)) ->
-      (forall x X, x \notin L -> X \notin L ->
-        t_context (ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
-      t_context (t_ctx_abs t C)
-  | t_context_if : forall C m1 m2,
-      t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if C m1 m2)
-  | t_context_if_true : forall C m1 m2,
-      t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if_true m1 C m2)
-  | t_context_if_false : forall C m1 m2,
-      t_context C -> t_term m1 -> t_term m2 -> t_context (t_ctx_if_false m1 m2 C)
-  | t_context_let_pair1 : forall C m,
-      t_context C -> t_term m -> t_context (t_ctx_let_pair1 C m)
-  | t_context_let_pair2 : forall C m,
-      t_context C -> t_term m -> t_context (t_ctx_let_pair2 C m)
-  | t_context_let_exp1 : forall C u,
-      t_context C -> t_value u -> t_context (t_ctx_let_exp1 u C)
-  | t_context_let_exp2 : forall C u,
-      t_context C -> t_value u -> t_context (t_ctx_let_exp2 u C)
-  | t_context_app1 : forall C t u,
-      t_context C -> t_type t -> t_value u -> t_context (t_ctx_app1 C t u)
-  | t_context_app2 : forall C t u,
-      t_context C -> t_type t -> t_value u -> t_context (t_ctx_app2 u t C).
+Inductive t_context : bool (* accept only values? *) -> ctx -> Prop :=
+  | t_context_value_context : forall b C,
+      t_value_context b C -> t_context b C
+  | t_context_hole : forall b, t_context b t_ctx_hole
+  | t_context_if : forall b C m1 m2,
+      t_value_context b C -> t_term m1 -> t_term m2 ->
+      t_context b (t_ctx_if C m1 m2)
+  | t_context_if_true : forall u b C m2,
+      t_value u -> t_context b C -> t_term m2 ->
+      t_context b (t_ctx_if_true u C m2)
+  | t_context_if_false : forall u m1 b C,
+      t_value u -> t_term m1 -> t_context b C ->
+      t_context b (t_ctx_if_false u m1 C)
+  | t_context_let_fst : forall b C m,
+      t_value_context b C -> t_term m -> t_context b (t_ctx_let_fst C m)
+  | t_context_let_fst_k : forall u b C,
+      t_value u -> t_context b C -> t_context b (t_ctx_let_fst_k u C)
+  | t_context_let_snd : forall b C m,
+      t_value_context b C -> t_term m -> t_context b (t_ctx_let_snd C m)
+  | t_context_let_snd_k : forall u b C,
+      t_value u -> t_context b C -> t_context b (t_ctx_let_snd_k u C)
+  | t_context_app1 : forall b C t u,
+      t_value_context b C -> t_type t -> t_value u ->
+      t_context b (t_ctx_app1 C t u)
+  | t_context_app2 : forall u t b C,
+      t_value u -> t_type t -> t_value_context b C ->
+      t_context b (t_ctx_app2 u t C)
 
-(* typing for contexts *)
-Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
+with t_value_context : bool (* accept only values? *) -> ctx -> Prop :=
+  | t_value_context_hole : t_value_context true t_ctx_hole
+  | t_context_pair_left : forall b C u,
+      t_value_context b C -> t_value u ->
+      t_value_context b (t_ctx_pair_left C u)
+  | t_context_pair_right : forall b C u,
+      t_value u -> t_value_context b C ->
+      t_value_context b (t_ctx_pair_right u C)
+  | t_context_abs : forall L t b C,
+      (forall X, X \notin L -> t_type (open_tt_var t X)) ->
+      (forall x X, x \notin L -> X \notin L ->
+        t_context b (ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
+      t_value_context b (t_ctx_abs t C).
+
+(* typing for contexts
+ *  TODO: update this
+ *  I'm concerned that this doesn't track all the places where we need
+ *  values vs terms: what properties should hold if t_context_typing holds?
+ *  We probably expect something about t_context but I don't think we are
+ *  checking enough things to have that.  -JTP
+ *)
+Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
+  : ctx -> env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
   | t_context_typing_hole : forall D_hole G_hole T_hole D G,
-      t_ok D_hole G_hole -> t_ok D G -> extends G_hole G ->
-      extends D_hole D ->
+      t_ok D_hole G_hole -> t_ok D G -> extends G_hole G -> extends D_hole D ->
       t_context_typing t_ctx_hole D_hole G_hole T_hole D G T_hole
   | t_context_typing_pair_left : forall C D_hole G_hole T_hole D G u t1 t2,
       t_context_typing C D_hole G_hole T_hole D G t1 ->
       t_typing D G u t2 ->
-      t_context_typing (t_ctx_pair_left C u) D_hole G_hole T_hole D G (t_typ_pair t1 t2)
+      t_context_typing (t_ctx_pair_left C u) D_hole G_hole T_hole
+                                             D G (t_typ_pair t1 t2)
   | t_context_typing_pair_right : forall C D_hole G_hole T_hole D G u t1 t2,
       t_context_typing C D_hole G_hole T_hole D G t2 ->
       t_typing D G u t1 ->
@@ -162,10 +180,10 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
                      (t_typ_pair t1 t2)
   | t_context_typing_abs : forall L C D_hole G_hole T_hole D G t1 t2,
       (forall x X, x \notin L -> X \notin L ->
-        t_context_typing (t_ctx_open_te_var (t_ctx_open_ee_var C x) X)
+        t_context_typing (ctx_open_te_var (t_ctx_open_ee_var C x) X)
                        D_hole G_hole T_hole
-                       (D & X ~ star) (G & x ~ (t_open_tt_var t1 X))
-                       (t_open_tt_var t2 X)) ->
+                       (D & X ~ star) (G & x ~ (open_tt_var t1 X))
+                       (open_tt_var t2 X)) ->
       t_context_typing (t_ctx_abs t1 C) D_hole G_hole T_hole D G (t_typ_arrow t1 t2)
   | t_context_typing_if : forall C D_hole G_hole T_hole D G m2 e3 t,
       t_context_typing C D_hole G_hole T_hole D G t_typ_bool ->
@@ -180,26 +198,26 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
       t_typing D G m1 t_typ_bool -> t_typing D G m2 t ->
       t_context_typing C D_hole G_hole T_hole D G t ->
       t_context_typing (t_ctx_if_false m1 m2 C) D_hole G_hole T_hole D G t
-  | t_context_typing_let_pair1 : forall L C D_hole G_hole T_hole D G m t1 t2 t,
+  | t_context_typing_let_fst : forall L C D_hole G_hole T_hole D G m t1 t2 t,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_typing D (G & x ~ t1) (t_open_ee_var m x) t) ->
-      t_context_typing (t_ctx_let_pair1 C m) D_hole G_hole T_hole D G t
-  | t_context_typing_let_pair2 : forall L C D_hole G_hole T_hole D G m t1 t2 t,
-      t_context_typing C D_hole G_hole T_hole D G (t_typ_pair t1 t2) ->
-      (forall x, x \notin L ->
-        t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
-      t_context_typing (t_ctx_let_pair2 C m) D_hole G_hole T_hole D G t
-  | t_context_typing_let_exp1 : forall L C D_hole G_hole T_hole D G u t1 t2 t,
+      t_context_typing (t_ctx_let_fst C m) D_hole G_hole T_hole D G t
+  | t_context_typing_let_fst_k : forall L C D_hole G_hole T_hole D G u t1 t2 t,
       t_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_context_typing C D_hole G_hole T_hole D (G & x ~ t1) t) ->
-      t_context_typing (t_ctx_let_exp1 u C) D_hole G_hole T_hole D G t
-  | t_context_typing_let_exp2 : forall L C D_hole G_hole T_hole D G u t1 t2 t,
+      t_context_typing (t_ctx_let_fst_k u C) D_hole G_hole T_hole D G t
+  | t_context_typing_let_snd : forall L C D_hole G_hole T_hole D G m t1 t2 t,
+      t_context_typing C D_hole G_hole T_hole D G (t_typ_pair t1 t2) ->
+      (forall x, x \notin L ->
+        t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
+      t_context_typing (t_ctx_let_snd C m) D_hole G_hole T_hole D G t
+  | t_context_typing_let_snd_k : forall L C D_hole G_hole T_hole D G u t1 t2 t,
       t_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
         t_context_typing C D_hole G_hole T_hole D (G & x ~ t2) t) ->
-      t_context_typing (t_ctx_let_exp2 u C) D_hole G_hole T_hole D G t
+      t_context_typing (t_ctx_let_snd_k u C) D_hole G_hole T_hole D G t
   | t_context_typing_app1 : forall C D_hole G_hole T_hole D G u t t1 t2,
       t_context_typing C D_hole G_hole T_hole D G (t_typ_arrow t1 t2) ->
       t_wft D t ->
@@ -214,120 +232,70 @@ Inductive t_context_typing : ctx -> env_type -> env_term -> typ -> env_type -> e
 (** reduction *)
 
 (** one step *)
-Inductive red_base : trm -> trm -> Prop :=
-  | red_if_true : forall m1 m2,
-    term m1 ->
-    term m2 ->
-    red_base (trm_if trm_true m1 m2) m1
-  | red_if_false : forall m1 m2,
-    term m1 ->
-    term m2 ->
-    red_base (trm_if trm_false m1 m2) m2
-  | red_let_fst : forall m v1 v2,
-    term m ->
-    value v1 ->
-    value v2 ->
-    red_base (trm_let_fst (trm_pair v1 v2) m) (open_ee m v1)
-  | red_let_snd : forall m v1 v2,
-    term m ->
-    value v1 ->
-    value v2 ->
-    red_base (trm_let_snd (trm_pair v1 v2) m) (open_ee m v2)
-  | red_app : forall m u t1 t,
-    value u ->
-    type t ->
-    value (trm_abs t1 m) ->
-    red_base (trm_app (trm_abs t1 m) t u) (open_te (open_ee m u) t).
+Inductive t_red_base : trm -> trm -> Prop :=
+  | t_red_if_true : forall m1 m2,
+      t_term m1 -> t_term m2 -> t_red_base (t_trm_if t_trm_true m1 m2) m1
+  | t_red_if_false : forall m1 m2,
+      t_term m1 -> t_term m2 -> t_red_base (t_trm_if t_trm_false m1 m2) m2
+  | t_red_let_fst : forall u1 u2 m,
+      t_value u1 -> t_value u2 -> t_term m ->
+      t_red_base (t_trm_let_fst (t_trm_pair u1 u2) m) (t_open_ee m u1)
+  | t_red_let_snd : forall u1 u2 m,
+      t_value u1 -> t_value u2 -> t_term m ->
+      t_red_base (t_trm_let_snd (t_trm_pair u1 u2) m) (t_open_ee m u2)
+  | t_red_app : forall t1 m t u,
+      t_value (t_trm_abs t1 m) -> t_type t -> t_value u ->
+      t_red_base (t_trm_app (t_trm_abs t1 m) t u) (open_te (t_open_ee m u) t).
 
 (** context step *)
-Inductive red : trm -> trm -> Prop :=
-  | red_ctx : forall E m m',
-      red_base m m' -> eval_context E ->
-      red (plug E m) (plug E m').
+Inductive t_red : trm -> trm -> Prop :=
+  | t_red_ctx : forall E m m',
+      t_red_base m m' -> t_eval_context E -> t_red (plug E m) (plug E m').
 
 (** multi-step step *)
-Inductive red_star : trm -> trm -> Prop :=
-  | red_refl : forall m, term m -> red_star m m
-  | red_step : forall m1 m2 e3,
-      red m1 m2 -> red_star m2 e3 -> red_star m1 e3.
+Inductive t_red_star : trm -> trm -> Prop :=
+  | t_red_refl : forall m, t_term m -> t_red_star m m
+  | t_red_step : forall m1 m2 e3,
+      t_red m1 m2 -> t_red_star m2 e3 -> t_red_star m1 e3.
 
-Inductive eval : trm -> trm -> Prop :=
-  | eval_red : forall m u,
-      red_star m u -> value u -> eval m u.
+Inductive t_eval : trm -> trm -> Prop :=
+  | t_eval_red : forall m u,
+      t_red_star m u -> t_value u -> t_eval m u.
 
 (* contextual equivalence *)
-Definition ctx_approx (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
-  typing D G m1 t /\ typing D G m2 t /\
+(* TODO: Danger! t_context_typing might not sufficiently check
+   that it's ok to plug (see the comment above t_context_typing)  -JTP *)
+Definition t_ctx_approx (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
+  t_typing D G m1 t /\ t_typing D G m2 t /\
   forall C u,
-    context_typing C D G t empty empty t_typ_bool ->
-    eval (plug C m1) u ->
-    eval (plug C m2) u.
+    t_context_typing C D G t empty empty t_typ_bool ->
+    t_eval (plug C m1) u ->
+    t_eval (plug C m2) u.
 
-Definition ctx_equiv (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
-  ctx_approx D G m1 m2 t /\ ctx_approx D G m2 m1 t.
+Definition t_ctx_equiv (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
+  t_ctx_approx D G m1 m2 t /\ t_ctx_approx D G m2 m1 t.
 
 (* CIU equivalence *)
+(* TODO: is my CIU definition correct?  -JTP *)
 
-Definition term_substitution := LibEnv.env trm.
-Definition type_substitution := LibEnv.env typ.
+Inductive t_tysubst_satisfies (* |- d : D *) : subst_type -> env_type -> Prop :=
+  | t_tysubst_satisfies_empty : t_tysubst_satisfies empty empty
+  | t_tysubst_satisfies_extend : forall d D X t,
+      t_tysubst_satisfies d D -> X # D -> t_wft empty t ->
+      t_tysubst_satisfies (d & X ~ t) (D & X ~ star).
 
-Definition term_subst_satisfies g G :=
-  forall x u t, binds x u g -> value u /\ binds x t G /\ typing empty empty u t.
-
-Definition type_subst_satisfies d D := forall X t t,
-  binds X t d -> type t /\ binds t star D.
-
-(* Use type and term (delta and gamma) substitions to close of open terms *)
-Fixpoint apply_type_subst (d : type_substitution) (t : typ) :=
-  match t with
-  | t_typ_bool        => t_typ_bool
-  | t_typ_pair t1 t2  => t_typ_pair (apply_type_subst d t1)
-                                (apply_type_subst d t2)
-  | t_typ_bvar J      => t
-  | t_typ_fvar X      => match get X d with
-                       | None => t_typ_fvar X
-                       | Some u => u end
-  | t_typ_arrow t1 t2 => t_typ_arrow (apply_type_subst d t1) (apply_type_subst d t2)
-  end.
-
-Fixpoint apply_term_subst (d : type_substitution)
-                          (g : term_substitution) (m : trm) :=
-  match m with
-  | trm_bvar n => trm_bvar n
-  | trm_fvar x => match get x g with None => trm_fvar x
-                    | Some u => u end
-  | trm_true => trm_true
-  | trm_false => trm_false
-  | trm_pair v1 v2 => trm_pair (apply_term_subst d g v1) (apply_term_subst d g v2)
-  | trm_abs t m1  => trm_abs (apply_type_subst d t) (apply_term_subst d g m1)
-  | trm_if u m1 m2 => trm_if (apply_term_subst d g u)
-                             (apply_term_subst d g m1)
-                             (apply_term_subst d g m2)
-  | trm_let_fst u m => trm_let_fst (apply_term_subst d g u)
-                                   (apply_term_subst d g m)
-  | trm_let_snd u m => trm_let_snd (apply_term_subst d g u)
-                                   (apply_term_subst d g m)
-  | trm_app m1 t m2 => trm_app (apply_term_subst d g m1)
-                               (apply_type_subst d t)
-                               (apply_term_subst d g m2)
-  end.
+Inductive t_subst_satisfies (* D |- g : G *)
+  : env_type -> subst_term -> env_term -> Prop :=
+  | t_subst_satisfies_empty : forall D, ok D -> t_subst_satisfies D empty empty
+  | t_subst_satisfies_extend : forall D g G x u t,
+      t_subst_satisfies D g G -> x # G -> t_typing D empty u t ->
+      t_subst_satisfies D (g & x ~ u) (G & x ~ t).
 
 Definition ciu_approx (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
-  typing D G m1 t /\ typing D G m2 t /\
+  t_typing D G m1 t /\ t_typing D G m2 t /\
   forall E d g u,
-    eval_context E -> context_typing E empty empty t empty empty t_typ_bool ->
-    type_subst_satisfies d D ->
-    term_subst_satisfies g G ->
-    eval (plug E (apply_term_subst d g m1)) u ->
-    eval (plug E (apply_term_subst d g m2)) u.
-
-(** We'll Eventually prove preservation and progress *)
-Definition preservation := forall D G m m' t,
-  typing D G m t ->
-  red m m' ->
-  typing D G m' t.
-
-Definition progress := forall m t,
-  typing empty empty m t ->
-     value m
-  \/ exists m', red m m'.
+    t_eval_context E ->
+    t_context_typing E empty empty t empty empty t_typ_bool ->
+    t_tysubst_satisfies d D -> t_subst_satisfies D g G ->
+    t_eval (plug E (subst_te d (subst_ee g m1))) u ->
+    t_eval (plug E (subst_te d (subst_ee g m2))) u.
