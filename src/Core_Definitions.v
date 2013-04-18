@@ -169,6 +169,7 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
   end.
 
 Definition open_tt t t' := open_tt_rec 0 t' t. (* t [t' / 0] *)
+Hint Immediate open_tt.
 Definition open_te e t' := open_te_rec 0 t' e. (* e [t' / 0] *)
 Definition s_open_ee e e' := open_ee_rec source 0 e' e. (* e [e' / 0] *)
 Definition t_open_ee e m' := open_ee_rec target 0 m' e. (* e [m' / 0] *)
