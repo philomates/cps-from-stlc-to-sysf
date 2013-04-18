@@ -21,6 +21,8 @@ Inductive t_type : typ -> Prop :=
       (forall X, X \notin L -> t_type (open_tt_var t2 X)) ->
       t_type (t_typ_arrow t1 t2).
 
+Hint Constructors t_type.
+
 (* Target Terms *)
 
 Inductive t_term : trm -> Prop :=
@@ -64,12 +66,16 @@ Inductive t_wft : env_type -> typ -> Prop :=
       (forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t2 X)) ->
       t_wft D (t_typ_arrow t1 t2).
 
+Hint Constructors t_wft.
+
 (* Delta |- Gamma *)
 Inductive t_ok : env_type -> env_term -> Prop :=
   | t_ok_empty : forall D,
       ok D -> t_ok D empty
   | t_ok_typ : forall D G x t,
       t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t).
+
+Hint Constructors t_ok.
 
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
@@ -86,6 +92,7 @@ Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
       t_typing D G u1 t1 -> t_typing D G u2 t2 -> t_value u1 -> t_value u2 ->
       t_typing D G (t_trm_pair u1 u2) (t_typ_pair t1 t2)
   | t_typing_abs : forall L D G m t1 t2,
+      (forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t1 X)) ->
       (forall x X, x \notin L -> X \notin L ->
         t_typing (D & X ~ star)
                  (G & x ~ (open_tt_var t1 X))
@@ -108,6 +115,8 @@ Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
       t_typing D G u1 (t_typ_arrow t1 t2) ->
       t_typing D G u2 (open_tt t1 t) ->
       t_typing D G (t_trm_app u1 t u2) (open_tt t2 t).
+
+Hint Constructors t_typing.
 
 (* CPS makes evaluation context of target lang simple *)
 Inductive t_eval_context : ctx -> Prop :=
