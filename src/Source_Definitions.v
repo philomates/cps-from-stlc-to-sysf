@@ -10,10 +10,18 @@ Require Import Core_Definitions.
 
 (* Source Types *)
 
+
 Inductive s_type : typ -> Prop :=
-  | s_type_bool : s_type s_typ_bool
-  | s_type_arrow : forall s1 s2, 
+  | s_type_pf_bool : s_type s_typ_bool
+  | s_type_pf_arrow : forall s1 s2, 
       s_type s1 -> s_type s2 -> s_type (s_typ_arrow s1 s2).
+
+(* constructors for (typ_satisfying s_type) *)
+Notation s_type_bool := [s_typ_bool, s_type_pf_bool; s_type].
+Notation s_type_arrow s1 s2 :=
+  [s_typ_arrow (obj s1) (obj s2),
+   s_type_pf_arrow (obj s1) (obj s2) (pf s1) (pf s2);
+   s_type].
 
 (* Source terms *)
 
@@ -38,34 +46,41 @@ with s_value : trm -> Prop :=
 Scheme s_term_mut := Induction for s_term Sort Prop
 with s_value_mut := Induction for s_value Sort Prop.
 
-Definition s_ok (G : env_term) : Prop :=
-  ok G /\ forall x s, binds x s G -> s_type s.
-
-(* Inductive t_ok : env_type -> env_term -> Prop :=
-  | t_ok_empty : forall D,
-      ok D -> t_ok D empty
-  | t_ok_typ : forall D G x t,
-      t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t). *)
-
-Inductive s_typing : env_term -> trm -> typ -> Prop :=
+(* alternate version, doesn't enforce that the type satisfies s_type *)
+(* Inductive s_typing : env_term s_type -> trm -> typ -> Prop :=
   | s_typing_var : forall G x s,
-      s_ok G -> binds x s G -> s_typing G (s_trm_fvar x) s
+      ok G -> binds x s G -> s_typing G (s_trm_fvar x) (obj s)
   | s_typing_true : forall G,
-      s_ok G -> s_typing G s_trm_true s_typ_bool
+      ok G -> s_typing G s_trm_true s_typ_bool
   | s_typing_false : forall G,
-      s_ok G -> s_typing G s_trm_false s_typ_bool
+      ok G -> s_typing G s_trm_false s_typ_bool
   | s_typing_abs : forall L G e s1 s2,
       (forall x, x \notin L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
-      (s_type s1) ->
-      s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
+      s_typing G (s_trm_abs (obj s1) e) (s_typ_arrow (obj s1) s2)
   | s_typing_if : forall G e1 e2 e3 s,
       s_typing G e1 s_typ_bool -> s_typing G e2 s -> s_typing G e3 s ->
       s_typing G (s_trm_if e1 e2 e3) s
   | s_typing_app : forall G e1 e2 s1 s2,
       s_typing G e1 (s_typ_arrow s1 s2) -> s_typing G e2 s1 ->
+      s_typing G (s_trm_app e1 e2) s2. *)
+
+Inductive s_typing : env_term s_type -> trm -> typ_satisfying s_type -> Prop :=
+  | s_typing_var : forall G x s,
+      ok G -> binds x s G -> s_typing G (s_trm_fvar x) s
+  | s_typing_true : forall G, ok G -> s_typing G s_trm_true s_type_bool
+  | s_typing_false : forall G, ok G -> s_typing G s_trm_false s_type_bool
+  | s_typing_abs : forall L G e s1 s2,
+      (forall x, x \notin L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
+      s_typing G (s_trm_abs (obj s1) e) (s_type_arrow s1 s2)
+  | s_typing_if : forall G e1 e2 e3 s,
+      s_typing G e1 s_type_bool ->
+      s_typing G e2 s -> s_typing G e3 s ->
+      s_typing G (s_trm_if e1 e2 e3) s
+  | s_typing_app : forall G e1 e2 s1 s2,
+      s_typing G e1 (s_type_arrow s1 s2) -> s_typing G e2 s1 ->
       s_typing G (s_trm_app e1 e2) s2.
 
-Hint Constructors s_type s_term s_typing. 
+Hint Constructors s_type s_term s_value s_typing. 
 
 (* contexts *)
 
@@ -106,36 +121,35 @@ Inductive s_context : ctx -> Prop :=
 (* typing for contexts *)
 
 Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
-  : ctx -> env_term -> typ -> env_term -> typ -> Prop :=
+  : ctx -> env_term s_type -> typ_satisfying s_type ->
+           env_term s_type -> typ_satisfying s_type -> Prop :=
   | s_context_typing_hole : forall G_hole s_hole G,
-      s_ok G_hole -> s_ok G -> extends G_hole G -> 
-      s_type s_hole ->
+      ok G_hole -> ok G -> extends G_hole G -> 
       s_context_typing s_ctx_hole G_hole s_hole G s_hole
   | s_context_typing_if : forall C G_hole s_hole G e2 e3 s,
-      s_context_typing C G_hole s_hole G s_typ_bool ->
+      s_context_typing C G_hole s_hole G s_type_bool ->
       s_typing G e2 s -> s_typing G e3 s ->
       s_context_typing (s_ctx_if C e2 e3) G_hole s_hole G s
   | s_context_typing_app1 : forall C G_hole s_hole G e s s',
-      s_context_typing C G_hole s_hole G (s_typ_arrow s s') ->
+      s_context_typing C G_hole s_hole G (s_type_arrow s s') ->
       s_typing G e s ->
       s_context_typing (s_ctx_app1 C e) G_hole s_hole G s'
   | s_context_typing_app2 : forall C G_hole s_hole G e s s',
-      s_typing G e (s_typ_arrow s s') ->
+      s_typing G e (s_type_arrow s s') ->
       s_context_typing C G_hole s_hole G s ->
       s_context_typing (s_ctx_app2 e C) G_hole s_hole G s'
   | s_context_typing_abs : forall L C G_hole s_hole G s s',
       (forall x, x \notin L -> s_context_typing (s_ctx_open_ee_var C x)
                                                 G_hole s_hole
                                                 (G & x ~ s) s') ->
-      s_type s -> (* XXX: Not sure if this check is necessary. *)
-      s_context_typing (s_ctx_abs s C) G_hole s_hole G (s_typ_arrow s s')
+      s_context_typing (s_ctx_abs (obj s) C) G_hole s_hole G (s_type_arrow s s')
   | s_context_typing_if_true : forall C G_hole s_hole G e1 e3 s,
-      s_typing G e1 s_typ_bool ->
+      s_typing G e1 s_type_bool ->
       s_context_typing C G_hole s_hole G s ->
       s_typing G e3 s ->
       s_context_typing (s_ctx_if_true e1 C e3) G_hole s_hole G s
   | s_context_typing_if_false : forall C G_hole s_hole G e1 e2 s,
-      s_typing G e1 s_typ_bool -> s_typing G e2 s ->
+      s_typing G e1 s_type_bool -> s_typing G e2 s ->
       s_context_typing C G_hole s_hole G s ->
       s_context_typing (s_ctx_if_false e1 e2 C) G_hole s_hole G s.
 
@@ -168,31 +182,31 @@ Inductive s_eval : trm -> trm -> Prop :=
 
 (* contextual equivalence *)
 
-Definition s_ctx_approx (G : env_term) (e1 e2 : trm) (s : typ) :=
+Definition s_ctx_approx (G : env_term s_type) (e1 e2 : trm) s :=
   s_typing G e1 s /\ s_typing G e2 s /\
   forall C v,
-    s_context_typing C G s empty s_typ_bool ->
+    s_context_typing C G s empty s_type_bool ->
     s_eval (plug C e1) v ->
     s_eval (plug C e2) v.
 
-Definition s_ctx_equiv (G : env_term) (e1 e2 : trm) (s : typ) :=
+Definition s_ctx_equiv (G : env_term s_type) (e1 e2 : trm) s :=
   s_ctx_approx G e1 e2 s /\ s_ctx_approx G e2 e1 s.
 
 (* CIU equivalence *)
 
-Inductive s_subst_satisfies : subst_term -> env_term -> Prop :=
+Inductive s_subst_satisfies : subst_term s_term -> env_term s_type -> Prop :=
 | s_subst_satisfies_empty : s_subst_satisfies empty empty
 | s_subst_satisfies_extend : forall g G x v s,
-    s_subst_satisfies g G -> x # G -> s_typing empty v s ->
+    s_subst_satisfies g G -> x # G -> s_typing empty (obj v) s ->
     s_subst_satisfies (g & x ~ v) (G & x ~ s).
 
-Definition s_ciu_approx (G : env_term) (e1 e2 : trm) (s : typ) :=
+Definition s_ciu_approx (G : env_term s_type) (e1 e2 : trm) s :=
   s_typing G e1 s /\ s_typing G e2 s /\
   forall E g v,
-    s_eval_context E -> s_context_typing E empty s empty s_typ_bool ->
+    s_eval_context E -> s_context_typing E empty s empty s_type_bool ->
     s_subst_satisfies g G ->
     s_eval (plug E (subst_ee g e1)) v ->
     s_eval (plug E (subst_ee g e2)) v.
 
-Definition s_ciu_equiv (G : env_term) (e1 e2 : trm) (s : typ) :=
+Definition s_ciu_equiv (G : env_term s_type) (e1 e2 : trm) s :=
   s_ciu_approx G e1 e2 s /\ s_ciu_approx G e2 e1 s.

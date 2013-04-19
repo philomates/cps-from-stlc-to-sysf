@@ -381,29 +381,37 @@ Fixpoint plug (C : ctx) (e : trm) : trm :=
 
 (* Environments and Substitutions *)
 
-Definition env_type := LibEnv.env unit. (* Delta *)
-Definition star := tt. (* base kind '*' that all types share *)
+Definition typ_satisfying (P : typ -> Prop) : Type := { t : typ | P t }.
+Definition trm_satisfying (P : trm -> Prop) : Type := { e : trm | P e }.
+Notation obj A := (proj1_sig A). (* extract the underlying object *)
+Notation pf A := (proj2_sig A). (* extract the proof that it satisfies P *)
+Notation "[ obj , pf ; P ]" := (exist P obj pf).
+Notation "[ obj , pf ]" := (exist _ obj pf).
 
-Definition env_term := LibEnv.env typ.  (* Gamma *)
+Definition env_type := env unit. (* Delta *)
+Notation star := tt. (* base kind '*' that all types share *)
 
-Definition subst_type := LibEnv.env typ. (* delta *)
-Definition subst_term := LibEnv.env trm. (* gamma *)
+Definition env_term P := env (typ_satisfying P). (* Gamma *)
 
-Fixpoint subst_tt (d : subst_type) (t : typ) :=
+Definition subst_type P := env (typ_satisfying P). (* delta *)
+Definition subst_term P := env (trm_satisfying P). (* gamma *)
+
+Fixpoint subst_tt {P : typ -> Prop} (d : subst_type P) (t : typ) :=
   match t with
   (* no type variables in source types *)
   | s_typ_bool        => t
   | s_typ_arrow _ _   => t
   (* target types *)
   | t_typ_bvar N      => t_typ_bvar N
-  | t_typ_fvar X      => match get X d with None => t_typ_fvar X
-                           | Some t => t end
+  | t_typ_fvar X      => match get X d with
+                           | None => t_typ_fvar X
+                           | Some [t,_] => t end
   | t_typ_bool        => t_typ_bool
   | t_typ_pair t1 t2  => t_typ_pair (subst_tt d t1) (subst_tt d t2)
   | t_typ_arrow t1 t2 => t_typ_arrow (subst_tt d t1) (subst_tt d t2)
   end.
 
-Fixpoint subst_te (d : subst_type) (e : trm) :=
+Fixpoint subst_te {P : typ -> Prop} (d : subst_type P) (e : trm) :=
   match e with
     | s_trm_bvar n      => s_trm_bvar n
     | s_trm_fvar x      => s_trm_fvar x
@@ -433,11 +441,13 @@ Fixpoint subst_te (d : subst_type) (e : trm) :=
     | t_trm_ts e s m    => t_trm_ts (subst_te d e) s (subst_te d m)
   end.
 
-Fixpoint subst_ee (g : subst_term) (e : trm) :=
+(* TODO: should this distinguish source and target vars like open does? *)
+Fixpoint subst_ee {P : trm -> Prop} (g : subst_term P) (e : trm) :=
   match e with
     | s_trm_bvar n      => s_trm_bvar n
-    | s_trm_fvar x      => match get x g with None => s_trm_fvar x
-                             | Some v => v end
+    | s_trm_fvar x      => match get x g with
+                             | None => s_trm_fvar x
+                             | Some [v,_] => v end
     | s_trm_true        => s_trm_true
     | s_trm_false       => s_trm_false
     | s_trm_abs s e     => s_trm_abs s (subst_ee g e)
@@ -448,8 +458,9 @@ Fixpoint subst_ee (g : subst_term) (e : trm) :=
     | s_trm_st m s      => s_trm_st (subst_ee g m) s
 
     | t_trm_bvar n      => t_trm_bvar n
-    | t_trm_fvar x      => match get x g with None => t_trm_fvar x
-                             | Some v => v end
+    | t_trm_fvar x      => match get x g with
+                             | None => t_trm_fvar x
+                             | Some [v,_] => v end
     | t_trm_true        => t_trm_true
     | t_trm_false       => t_trm_false
     | t_trm_pair u1 u2  => t_trm_pair (subst_ee g u1) (subst_ee g u2)
