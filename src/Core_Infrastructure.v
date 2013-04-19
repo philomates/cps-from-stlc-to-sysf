@@ -4,8 +4,7 @@
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
-Set Implicit Arguments.
-Require Import LibLN Core_Definitions.
+Require Export Core_Definitions.
 
 (* ********************************************************************** *)
 (** * Additional Definitions Used in the Proofs *)

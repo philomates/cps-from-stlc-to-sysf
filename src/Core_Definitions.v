@@ -4,8 +4,7 @@
  * William J. Bowman, Phillip Mates & James T. Perconti *
  ********************************************************)
 
-Set Implicit Arguments.
-Require Import LibLN.
+Require Export LibLN.
 Require Import EqNat.
 Implicit Type x : var.
 Implicit Type X : var.

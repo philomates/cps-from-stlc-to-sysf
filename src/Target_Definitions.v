@@ -3,8 +3,7 @@
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
-Set Implicit Arguments.
-Require Import LibLN Core_Definitions.
+Require Import Core_Definitions.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)

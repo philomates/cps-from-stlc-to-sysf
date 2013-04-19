@@ -1,10 +1,6 @@
-Set Implicit Arguments.
-Require Import LibLN.
-Require Import Core_Definitions.
-Require Import Source_Definitions.
+(* basic properties of source language *)
 
-Implicit Type x : var.
-Implicit Type X : var.
+Require Import Source_Definitions Core_Infrastructure.
 
 Theorem s_typing_implies_s_ok : forall G e s,
   s_typing G e s -> s_ok G.
@@ -13,7 +9,7 @@ Proof. (* TODO *)
   induction P; auto.
   unfolds s_ok.
   split.
-  pick_fresh.
+  pick_fresh x.
 
 Admitted. 
 
@@ -26,7 +22,3 @@ Theorem s_typing_implies_s_term : forall G e s,
   s_typing G e s -> s_term e.
 Proof. (* TODO *)
 Admitted. 
-
-
-
-

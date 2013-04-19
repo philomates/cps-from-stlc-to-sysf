@@ -1,3 +1,7 @@
+(* this file is deprecated; we still have it here to refer to some lemmas
+ * we might want to reprove elsewhere, but probably we should just remove
+ * this and refer to the Fsub files when we need a reference -JTP *)
+
 (***************************************************************************
 * Preservation and Progress for CPS System-F - Infrastructure              *
 * Target language present in Ahmed & Blume ICFP 2011   

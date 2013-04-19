@@ -1,7 +1,6 @@
 (* Basic properties of target language *)
 
-Set Implicit Arguments.
-Require Import LibLN Target_Definitions Core_Infrastructure.
+Require Import Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 (** * Properties of well-formedness of a type in an environment *)
