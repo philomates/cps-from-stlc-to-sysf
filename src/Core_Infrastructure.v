@@ -83,13 +83,13 @@ Fixpoint fv_ee (e : trm) {struct e} : vars :=
 
 (** Gathering free names already used in the proofs *)
 
-Ltac gather_vars :=
+Ltac gather_vars := (* TODO that _ doesn't work *)
   let A := gather_vars_with (fun x : vars => x) in
   let B := gather_vars_with (fun x : var => \{x}) in
   let C := gather_vars_with (fun x : trm => fv_te x) in
   let D := gather_vars_with (fun x : trm => fv_ee x) in
   let E := gather_vars_with (fun x : typ => fv_tt x) in
-  let F := gather_vars_with (fun {T : Type} (x : env T) => dom x) in
+  let F := gather_vars_with (fun x : env _ => dom x) in
   constr:(A \u B \u C \u D \u E \u F).
 
 (** "pick_fresh x" tactic create a fresh variable with name x *)

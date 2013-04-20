@@ -383,8 +383,8 @@ Fixpoint plug (C : ctx) (e : trm) : trm :=
 
 Definition typ_satisfying (P : typ -> Prop) : Type := { t : typ | P t }.
 Definition trm_satisfying (P : trm -> Prop) : Type := { e : trm | P e }.
-Notation obj A := (proj1_sig A). (* extract the underlying object *)
-Notation pf A := (proj2_sig A). (* extract the proof that it satisfies P *)
+Notation obj := proj1_sig. (* extract the underlying object *)
+Notation pf := proj2_sig. (* extract the proof that it satisfies P *)
 Notation "[ obj , pf ; P ]" := (exist P obj pf).
 Notation "[ obj , pf ]" := (exist _ obj pf).
 
