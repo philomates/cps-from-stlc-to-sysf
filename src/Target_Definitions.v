@@ -85,7 +85,10 @@ Proof.
   induction H; intros; subst; auto.
   apply t_wft_var. apply* binds_weaken.
 Admitted.
-(*  apply_fresh t_wft_arrow as X.
+(* the problem here is that we apparently can't define gather_vars
+   for (env _); we'll have to fill in the particular kinds of envs we use,
+   and that messes up the module dependencies we wanted to have -JTP *)
+(* apply_fresh t_wft_arrow as X.
   rewrite <- concat_assoc.
   apply H0; try rewrite concat_assoc; auto.
   apply ok_push; auto. *)
@@ -99,26 +102,11 @@ Proof.
   rewrite* concat_empty_r.
 Qed.
 
-Lemma t_wftenv_weaken : forall D (G : env_term (t_wft D)) X,
-  ok G -> ok (D & X ~ star) ->
-  exists (G' : env_term (t_wft (D & X ~ star))),
-    forall x t, binds x t (map (fun t => obj t) G) <->
-                binds x t (map (fun t => obj t) G').
-Proof.
-  induction 1; intros.
-  exists (empty : env_term (t_wft (D & X ~ star))).
-  rewrite map_empty. rewrite* map_empty.
-  remember ([obj v, t_wft_weaken D X (obj v) (pf v) H1]
-            : typ_satisfying (t_wft (D & X ~ star))) as v'.
-  assert (IH : ok (D & X ~ star)). exact H1.
-  apply IHok in IH. destruct IH as [G' IH].
-  exists (G' & x ~ v').
-  repeat rewrite map_concat. repeat rewrite map_single.
-  destruct v as [t p]. subst. simpl.
-  split; intros; apply binds_push_inv in H2; destruct H2; destruct H2;
-  destruct (IH x0 t0) as [IH1 IH2]; subst;
-  try apply binds_push_eq; apply* binds_push_neq.
-Qed.
+Definition t_extend_wftenv_delta (D : env_type) (G : env_term (t_wft D))
+ X (okX : ok (D & X ~ star)) : env_term (t_wft (D & X ~ star)) :=
+ map (fun t => [obj t, t_wft_weaken D X (obj t) (pf t) okX;
+                t_wft (D & X ~ star)])
+     G.
 
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
@@ -136,22 +124,20 @@ Inductive t_typing (D : env_type) : env_term (t_wft D) ->
       t_typing D G u1 t1 -> t_typing D G u2 t2 -> t_value u1 -> t_value u2 ->
       t_typing D G (t_trm_pair u1 u2) (t_type_pair D t1 t2)
   | t_typing_abs : forall L (G : env_term (t_wft D)) m t1 t2,
+      forall (okD : ok D),
       forall (pf1 :
         forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t1 X)),
       forall (pf2 :
         forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t2 X)),
-      (forall x X (frx : x \notin L) (frX : X \notin L),
+      (forall x X (frx : x \notin L) (frX : X \notin L) (frXD : X # D),
         t_typing (D & X ~ star)
-                    (* in the line below, instead of G we need something
-                       of type (env_term (t_wft D & X ~ star))
-                       but I don't know how to get that.
-                       I think we'll need t_wftenv_weaken (above) -JTP *)
-                 (G & x ~ [open_tt_var t1 X, pf1 X frX; t_wft (D & X ~ star)])
+                 (t_extend_wftenv_delta D G X (ok_push star okD frXD) &
+                   x ~ [open_tt_var t1 X, pf1 X frX; t_wft (D & X ~ star)])
                  (open_te_var (t_open_ee_var m x) X)
                  [open_tt_var t2 X, pf2 X frX; t_wft (D & X ~ star)]) ->
       t_typing D G (t_trm_abs t1 m)
                [t_typ_arrow t1 t2,
-                t_wft_arrow L D t1 t2 pf1 ;
+                t_wft_arrow L D t1 t2 pf1 pf2;
                 t_wft D]
   | t_typing_if : forall G u m1 m2 t,
       t_typing D G u (t_type_bool D) ->
@@ -165,6 +151,7 @@ Inductive t_typing (D : env_type) : env_term (t_wft D) ->
       t_typing D G u (t_type_pair D t1 t2) ->
       (forall x, x \notin L -> t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
       t_typing D G (t_trm_let_snd u m) t.
+(* app case is going to be a challenge - JTP *)
 (*  | t_typing_app : forall G u1 u2 t t1 t2,
       t_wft D t ->
       t_typing D G u1 (t_typ_arrow t1 t2) ->
