@@ -73,8 +73,8 @@ Notation t_type_pair D t1 t2 :=
   [t_typ_pair (obj t1) (obj t2),
    t_wft_pair D (obj t1) (obj t2) (pf t1) (pf t2);
    t_wft D].
-(* Notation t_type_arrow L t1 t2 :
-  [t_typ_arrow (obj t1) (obj t2),
+(* Notation t_type_arrow t1 t2 :
+   [t_typ_arrow (obj t1) (obj t2),
    t_type_pf_arrow L (obj t1) (obj t2) ? ?;
    t_type]. *)
 
@@ -84,14 +84,11 @@ Proof.
   intros. remember (D & D') as D0. generalize dependent D'.
   induction H; intros; subst; auto.
   apply t_wft_var. apply* binds_weaken.
-Admitted.
-(* the problem here is that we apparently can't define gather_vars
-   for (env _); we'll have to fill in the particular kinds of envs we use,
-   and that messes up the module dependencies we wanted to have -JTP *)
-(* apply_fresh t_wft_arrow as X.
-  rewrite <- concat_assoc.
-  apply H0; try rewrite concat_assoc; auto.
-  apply ok_push; auto. *)
+  apply_fresh t_wft_arrow as X;
+  rewrite <- concat_assoc;
+  try (apply H0); try (apply H2);
+  try rewrite concat_assoc; auto.
+Qed.
 
 Lemma t_wft_weaken : forall D X t,
   t_wft D t -> ok (D & X ~ star) -> t_wft (D & X ~ star) t.
@@ -107,6 +104,47 @@ Definition t_extend_wftenv_delta (D : env_type) (G : env_term (t_wft D))
  map (fun t => [obj t, t_wft_weaken D X (obj t) (pf t) okX;
                 t_wft (D & X ~ star)])
      G.
+
+Lemma t_wft_open : forall D t (t' : typ_satisfying (t_wft D)),
+  (forall X, X \notin \{} -> t_wft (D & X ~ star) (open_tt_var t X)) ->
+  t_wft D (open_tt t (obj t')).
+Proof.
+(*  intros. destruct t' as [t' Ht']. simpl.
+  pick_fresh X. assert (HH : t_wft (D & X ~ star) (open_tt_var t X)); auto.
+  induction t; unfolds open_tt_var; unfolds open_tt; simpl in *; auto;
+  try (destruct n; auto); inversion HH; subst.
+  apply t_wft_var. apply binds_push_inv in H2.
+  (* TODO: find a tactic that does all the crap on the next two lines *)
+  intuition. subst. rewrite <- union_assoc in Fr.
+  apply notin_union_r1 in Fr. apply notin_same in Fr. contradiction.
+
+  apply t_wft_pair.
+  apply IHt1; auto; intros; apply (H X0) in H0; inversion* H0.
+  apply IHt2; auto; intros; apply (H X0) in H0; inversion* H0.
+*)
+  
+
+  intros. destruct t' as [t' Ht']. simpl.
+  pick_fresh X. assert (H' : t_wft (D & X ~ star) (open_tt_var t X)); auto.
+  remember (open_tt_var t X) as tt. remember (D & X ~ star) as D0.
+  generalize dependent D. generalize dependent t. generalize dependent X.
+  induction H'; intros; unfolds open_tt_var; unfolds open_tt;
+  destruct t; inversion Heqtt; try(destruct n; auto; inversion Heqtt);
+  simpl in *; subst; auto.
+
+  apply t_wft_var. apply binds_push_inv in H.
+  (* TODO: find a tactic that does all the crap on the next two lines *)
+  intuition. subst. rewrite <- union_assoc in Fr.
+  apply notin_union_r1 in Fr. apply notin_same in Fr. contradiction.
+
+  apply t_wft_pair.
+  apply (IHH'1 X); auto. intros; apply (H X0) in H0; inversion* H0.
+  apply (IHH'2 X); auto; intros; apply (H X0) in H0; inversion* H0.
+
+  apply_fresh t_wft_arrow as Y;
+  unfolds open_tt_var; unfolds open_tt; simpl in *. clear Heqtt.
+Admitted.
+  
 
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
@@ -150,13 +188,18 @@ Inductive t_typing (D : env_type) : env_term (t_wft D) ->
   | t_typing_let_snd : forall L G u m t1 t2 t,
       t_typing D G u (t_type_pair D t1 t2) ->
       (forall x, x \notin L -> t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
-      t_typing D G (t_trm_let_snd u m) t.
-(* app case is going to be a challenge - JTP *)
-(*  | t_typing_app : forall G u1 u2 t t1 t2,
-      t_wft D t ->
-      t_typing D G u1 (t_typ_arrow t1 t2) ->
-      t_typing D G u2 (open_tt t1 t) ->
-      t_typing D G (t_trm_app u1 t u2) (open_tt t2 t). *)
+      t_typing D G (t_trm_let_snd u m) t
+  | t_typing_app : forall G u1 (t : typ_satisfying (t_wft D)) u2 t1 t2,
+      forall (pf1 :
+        forall X, X \notin \{} -> t_wft (D & X ~ star) (open_tt_var t1 X)),
+      forall (pf2 :
+        forall X, X \notin \{} -> t_wft (D & X ~ star) (open_tt_var t2 X)),
+      t_typing D G u1 [t_typ_arrow t1 t2,
+                       t_wft_arrow \{} D t1 t2 pf1 pf2; t_wft D] ->
+      t_typing D G u2 [open_tt t1 (obj t), t_wft_open D t1 t pf1; t_wft D] ->
+      t_typing D G (t_trm_app u1 (obj t) u2)
+               [open_tt t2 (obj t), t_wft_open D t2 t pf2; t_wft D].
+
 
 Hint Constructors t_typing.
 

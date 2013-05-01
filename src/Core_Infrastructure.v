@@ -89,7 +89,7 @@ Ltac gather_vars := (* TODO that _ doesn't work *)
   let C := gather_vars_with (fun x : trm => fv_te x) in
   let D := gather_vars_with (fun x : trm => fv_ee x) in
   let E := gather_vars_with (fun x : typ => fv_tt x) in
-  let F := gather_vars_with (fun x : env _ => dom x) in
+  let F := gather_vars_with (fun x : env unit => dom x) in
   constr:(A \u B \u C \u D \u E \u F).
 
 (** "pick_fresh x" tactic create a fresh variable with name x *)
