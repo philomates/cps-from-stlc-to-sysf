@@ -144,7 +144,6 @@ Proof.
   unfolds open_tt_var; unfolds open_tt; simpl in *. clear Heqtt.
 Admitted.
   
-
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
 (* NOTE: Might need to enforce value restrictions
