@@ -52,29 +52,29 @@ Fixpoint fv_te (e : trm) {struct e} : vars :=
 
 (** Computing free term variables in a term *)
 
-Fixpoint fv_ee (e : trm) {struct e} : vars :=
+Fixpoint fv_ee (l : lang) (e : trm) {struct e} : vars :=
   match e with
   | s_trm_bvar i    => \{}
-  | s_trm_fvar x    => \{x}
+  | s_trm_fvar x    => if beq_lang l source then \{x} else \{}
   | s_trm_true      => \{}
   | s_trm_false     => \{}
-  | s_trm_abs s e1  => (fv_ee e1)
-  | s_trm_if e1 e2 e3 => (fv_ee e1) \u (fv_ee e2) \u (fv_ee e3)
-  | s_trm_app e1 e2 => (fv_ee e1) \u (fv_ee e2)
+  | s_trm_abs s e1  => (fv_ee l e1)
+  | s_trm_if e1 e2 e3 => (fv_ee l e1) \u (fv_ee l e2) \u (fv_ee l e3)
+  | s_trm_app e1 e2 => (fv_ee l e1) \u (fv_ee l e2)
 
   | t_trm_bvar i    => \{}
-  | t_trm_fvar x    => \{x}
+  | t_trm_fvar x    => if beq_lang l target then \{x} else \{}
   | t_trm_true      => \{}
   | t_trm_false     => \{}
-  | t_trm_pair e1 e2 => (fv_ee e1) \u (fv_ee e2)
-  | t_trm_abs t e1  => (fv_ee e1)
-  | t_trm_if v e1 e2 => (fv_ee v) \u (fv_ee e1) \u (fv_ee e2)
-  | t_trm_let_fst v e2 => (fv_ee v) \u (fv_ee e2)
-  | t_trm_let_snd v e2 => (fv_ee v) \u (fv_ee e2)
-  | t_trm_app e1 t e2 => (fv_ee e1) \u (fv_ee e2)
+  | t_trm_pair e1 e2 => (fv_ee l e1) \u (fv_ee l e2)
+  | t_trm_abs t e1  => (fv_ee l e1)
+  | t_trm_if v e1 e2 => (fv_ee l v) \u (fv_ee l e1) \u (fv_ee l e2)
+  | t_trm_let_fst v e2 => (fv_ee l v) \u (fv_ee l e2)
+  | t_trm_let_snd v e2 => (fv_ee l v) \u (fv_ee l e2)
+  | t_trm_app e1 t e2 => (fv_ee l e1) \u (fv_ee l e2)
 
-  | s_trm_st m1 s1 => (fv_ee m1)
-  | t_trm_ts e1 s1 m2 => (fv_ee e1) \u (fv_ee m2)
+  | s_trm_st m1 s1 => (fv_ee l m1)
+  | t_trm_ts e1 s1 m2 => (fv_ee l e1) \u (fv_ee l m2)
   end.
 
 
@@ -86,12 +86,15 @@ Fixpoint fv_ee (e : trm) {struct e} : vars :=
 Ltac gather_vars :=
   let A := gather_vars_with (fun x : vars => x) in
   let B := gather_vars_with (fun x : var => \{x}) in
-  let C := gather_vars_with (fun x : trm => fv_te x) in
-  let D := gather_vars_with (fun x : trm => fv_ee x) in
-  let E := gather_vars_with (fun x : typ => fv_tt x) in
-  let F := gather_vars_with (fun x : env_term => dom x) in
+  let C := gather_vars_with (fun x : typ => fv_tt x) in
+  let D := gather_vars_with (fun x : trm => fv_te x) in
+  let E := gather_vars_with (fun x : trm => fv_ee source x) in
+  let F := gather_vars_with (fun x : trm => fv_ee target x) in
   let G := gather_vars_with (fun x : env_type => dom x) in
-  constr:(A \u B \u C \u D \u E \u F \u G).
+  let H := gather_vars_with (fun x : env_term => dom x) in
+  let I := gather_vars_with (fun x : subst_type => dom x) in
+  let J := gather_vars_with (fun x : subst_term => dom x) in
+  constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J).
 
 (** "pick_fresh x" tactic create a fresh variable with name x *)
 
