@@ -341,13 +341,13 @@ Fixpoint ctx_open_ee_rec (l : lang) (K : nat) (e' : trm) (C : ctx) : ctx :=
                                            (inc_if_eq l target K) e' C)
   end.
 
-Definition ctx_open_te C t' := ctx_open_te_rec 0 t' C.
-Definition s_ctx_open_ee C e' := ctx_open_ee_rec source 0 e' C.
-Definition t_ctx_open_ee C m' := ctx_open_ee_rec target 0 m' C.
+Notation ctx_open_te := (fun C t' => ctx_open_te_rec 0 t' C).
+Notation s_ctx_open_ee := (fun C e' => ctx_open_ee_rec source 0 e' C).
+Notation t_ctx_open_ee := (fun C m' => ctx_open_ee_rec target 0 m' C).
 
-Definition ctx_open_te_var C X := ctx_open_te C (t_typ_fvar X).
-Definition s_ctx_open_ee_var C x := s_ctx_open_ee C (s_trm_fvar x).
-Definition t_ctx_open_ee_var C x := t_ctx_open_ee C (t_trm_fvar x).
+Notation ctx_open_te_var := (fun C X => ctx_open_te C (t_typ_fvar X)).
+Notation s_ctx_open_ee_var := (fun C x => s_ctx_open_ee C (s_trm_fvar x)).
+Notation t_ctx_open_ee_var := (fun C x => t_ctx_open_ee C (t_trm_fvar x)).
 
 (* Fill a context with a term *)
 Fixpoint plug (C : ctx) (e : trm) : trm :=
