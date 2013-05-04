@@ -432,32 +432,44 @@ Fixpoint subst_te (d : subst_type) (e : trm) :=
     | t_trm_ts e s m    => t_trm_ts (subst_te d e) s (subst_te d m)
   end.
 
-Fixpoint subst_ee (g : subst_term) (e : trm) :=
+(* This definition only allows us to apply single-language substitutions.
+   Since envs are not tagged with the language of the vars in their domains,
+   we have to be careful about which language variables are in. *)
+Fixpoint subst_ee (l : lang) (g : subst_term) (e : trm) :=
   match e with
     | s_trm_bvar n      => s_trm_bvar n
-    | s_trm_fvar x      => match get x g with None => s_trm_fvar x
-                             | Some v => v end
+    | s_trm_fvar x      => if beq_lang l source
+                           then match get x g with
+                                  | Some v => v
+                                  | None => s_trm_fvar x end
+                           else s_trm_fvar x
     | s_trm_true        => s_trm_true
     | s_trm_false       => s_trm_false
-    | s_trm_abs s e     => s_trm_abs s (subst_ee g e)
-    | s_trm_if e1 e2 e3 => s_trm_if (subst_ee g e1)
-                                    (subst_ee g e2)
-                                    (subst_ee g e3)
-    | s_trm_app e1 e2   => s_trm_app (subst_ee g e1) (subst_ee g e2)
-    | s_trm_st m s      => s_trm_st (subst_ee g m) s
+    | s_trm_abs s e     => s_trm_abs s (subst_ee l g e)
+    | s_trm_if e1 e2 e3 => s_trm_if (subst_ee l g e1)
+                                    (subst_ee l g e2)
+                                    (subst_ee l g e3)
+    | s_trm_app e1 e2   => s_trm_app (subst_ee l g e1) (subst_ee l g e2)
+    | s_trm_st m s      => s_trm_st (subst_ee l g m) s
 
     | t_trm_bvar n      => t_trm_bvar n
-    | t_trm_fvar x      => match get x g with None => t_trm_fvar x
-                             | Some v => v end
+    | t_trm_fvar x      => if beq_lang l target
+                           then match get x g with
+                             | Some v => v
+                             | None => t_trm_fvar x end
+                           else t_trm_fvar x
     | t_trm_true        => t_trm_true
     | t_trm_false       => t_trm_false
-    | t_trm_pair u1 u2  => t_trm_pair (subst_ee g u1) (subst_ee g u2)
-    | t_trm_abs t m     => t_trm_abs t (subst_ee g m)
-    | t_trm_if u m1 m2  => t_trm_if (subst_ee g u)
-                                    (subst_ee g m1)
-                                    (subst_ee g m2)
-    | t_trm_let_fst u m => t_trm_let_fst (subst_ee g u) (subst_ee g m)
-    | t_trm_let_snd u m => t_trm_let_snd (subst_ee g u) (subst_ee g m)
-    | t_trm_app m1 t m2 => t_trm_app (subst_ee g m1) t (subst_ee g m2)
-    | t_trm_ts e s m    => t_trm_ts (subst_ee g e) s (subst_ee g m)
+    | t_trm_pair u1 u2  => t_trm_pair (subst_ee l g u1) (subst_ee l g u2)
+    | t_trm_abs t m     => t_trm_abs t (subst_ee l g m)
+    | t_trm_if u m1 m2  => t_trm_if (subst_ee l g u)
+                                    (subst_ee l g m1)
+                                    (subst_ee l g m2)
+    | t_trm_let_fst u m => t_trm_let_fst (subst_ee l g u) (subst_ee l g m)
+    | t_trm_let_snd u m => t_trm_let_snd (subst_ee l g u) (subst_ee l g m)
+    | t_trm_app m1 t m2 => t_trm_app (subst_ee l g m1) t (subst_ee l g m2)
+    | t_trm_ts e s m    => t_trm_ts (subst_ee l g e) s (subst_ee l g m)
   end.
+
+Notation s_subst_ee := (subst_ee source).
+Notation t_subst_ee := (subst_ee target).
