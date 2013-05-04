@@ -8,6 +8,12 @@ Require Export LibEnv.
 Definition wfenv {A: Type} (P : A -> Prop) (E : env A) : Prop :=
   ok E /\ forall x v, binds x v E -> P v.
 
+Definition relenv {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop) : Prop :=
+  dom E = dom F /\
+  forall x a b, wfenv P E -> wfenv Q F -> binds x a E -> binds x b F -> R a b.
+
 Lemma wfenv_ok : forall {A : Type} (P : A -> Prop) (E : env A),
   wfenv P E -> ok E.
 Proof. unfold wfenv. intuition. Qed.
@@ -15,6 +21,19 @@ Proof. unfold wfenv. intuition. Qed.
 Lemma wfenv_binds : forall {A : Type} (P : A -> Prop) (E : env A) x v,
   wfenv P E -> binds x v E -> P v.
 Proof. unfold wfenv. intuition. eauto. Qed.
+
+Lemma relenv_dom : forall {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
+  relenv P E Q F R -> dom E = dom F.
+Proof. unfold relenv. intuition. Qed.
+
+Lemma relenv_rel : forall {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
+  relenv P E Q F R ->
+  forall x a b, wfenv P E -> wfenv Q F -> binds x a E -> binds x b F -> R a b.
+Proof. unfold relenv. intuition. Qed.
 
 (* Here we reprove some lemmas from LibEnv about ok as lemmas about wfenv *)
 
@@ -89,6 +108,7 @@ Qed.
  *        ok_remove, ok_map, ok_concat_map, ok_singles *)
 
 (* additional lemmas specific to wfenv *)
+(* TODO: what else is useful here? *)
 
 Lemma wfenv_implies : forall {A : Type} (P Q : A -> Prop) (E : env A),
   (forall v, P v -> Q v) -> wfenv P E -> wfenv Q E.
@@ -97,3 +117,5 @@ Proof.
   auto using wfenv_empty.
   intros. apply wfenv_push_inv in H5. apply wfenv_push; auto.
 Qed.
+
+(* TODO: lemmas about relenv *)

@@ -3,7 +3,7 @@
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
-Require Import Core_Definitions.
+Require Import Core_Definitions LibWfenv.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)
@@ -38,22 +38,13 @@ with s_value : trm -> Prop :=
 Scheme s_term_mut := Induction for s_term Sort Prop
 with s_value_mut := Induction for s_value Sort Prop.
 
-Definition s_ok (G : env_term) : Prop :=
-  ok G /\ forall x s, binds x s G -> s_type s.
-
-(* Inductive t_ok : env_type -> env_term -> Prop :=
-  | t_ok_empty : forall D,
-      ok D -> t_ok D empty
-  | t_ok_typ : forall D G x t,
-      t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t). *)
-
 Inductive s_typing : env_term -> trm -> typ -> Prop :=
   | s_typing_var : forall G x s,
-      s_ok G -> binds x s G -> s_typing G (s_trm_fvar x) s
+      wfenv s_type G -> binds x s G -> s_typing G (s_trm_fvar x) s
   | s_typing_true : forall G,
-      s_ok G -> s_typing G s_trm_true s_typ_bool
+      wfenv s_type G -> s_typing G s_trm_true s_typ_bool
   | s_typing_false : forall G,
-      s_ok G -> s_typing G s_trm_false s_typ_bool
+      wfenv s_type G -> s_typing G s_trm_false s_typ_bool
   | s_typing_abs : forall L G e s1 s2,
       (forall x, x \notin L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
       (s_type s1) ->
@@ -65,7 +56,7 @@ Inductive s_typing : env_term -> trm -> typ -> Prop :=
       s_typing G e1 (s_typ_arrow s1 s2) -> s_typing G e2 s1 ->
       s_typing G (s_trm_app e1 e2) s2.
 
-Hint Constructors s_type s_term s_typing. 
+Hint Constructors s_type s_term s_value s_typing. 
 
 (* contexts *)
 
@@ -108,7 +99,7 @@ Inductive s_context : ctx -> Prop :=
 Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
   : ctx -> env_term -> typ -> env_term -> typ -> Prop :=
   | s_context_typing_hole : forall G_hole s_hole G,
-      s_ok G_hole -> s_ok G -> extends G_hole G -> 
+      wfenv s_type G_hole -> wfenv s_type G -> extends G_hole G -> 
       s_type s_hole ->
       s_context_typing s_ctx_hole G_hole s_hole G s_hole
   | s_context_typing_if : forall C G_hole s_hole G e2 e3 s,
@@ -180,19 +171,13 @@ Definition s_ctx_equiv (G : env_term) (e1 e2 : trm) (s : typ) :=
 
 (* CIU equivalence *)
 
-Inductive s_subst_satisfies : subst_term -> env_term -> Prop :=
-| s_subst_satisfies_empty : s_subst_satisfies empty empty
-| s_subst_satisfies_extend : forall g G x v s,
-    s_subst_satisfies g G -> x # G -> s_typing empty v s ->
-    s_subst_satisfies (g & x ~ v) (G & x ~ s).
-
 Definition s_ciu_approx (G : env_term) (e1 e2 : trm) (s : typ) :=
   s_typing G e1 s /\ s_typing G e2 s /\
   forall E g v,
     s_eval_context E -> s_context_typing E empty s empty s_typ_bool ->
-    s_subst_satisfies g G ->
-    s_eval (plug E (subst_ee g e1)) v ->
-    s_eval (plug E (subst_ee g e2)) v.
+    relenv s_value g s_type G (s_typing empty) ->
+    s_eval (plug E (s_subst_ee g e1)) v ->
+    s_eval (plug E (s_subst_ee g e2)) v.
 
 Definition s_ciu_equiv (G : env_term) (e1 e2 : trm) (s : typ) :=
   s_ciu_approx G e1 e2 s /\ s_ciu_approx G e2 e1 s.
