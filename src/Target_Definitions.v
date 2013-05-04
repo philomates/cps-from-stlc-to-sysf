@@ -3,10 +3,11 @@
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
-Require Import Core_Definitions.
+Require Import Core_Definitions LibWfenv.
 
 (* ********************************************************************** *)
-(** * Description of the Language *)
+
+(* Locally-closed types and terms  *)
 
 (* Target Types *)
 
@@ -54,10 +55,14 @@ with t_value : trm -> Prop :=
 Scheme t_term_mut := Induction for t_term Sort Prop
 with t_value_mut := Induction for t_value Sort Prop.
 
+Hint Constructors t_term t_value.
+
+(* Type System *)
+
 (* Delta |- tau *)
 Inductive t_wft : env_type -> typ -> Prop :=
-  | t_wft_var : forall D X, binds X star D -> t_wft D (t_typ_fvar X)
-  | t_wft_bool : forall D, t_wft D t_typ_bool
+  | t_wft_var : forall D X, ok D -> binds X star D -> t_wft D (t_typ_fvar X)
+  | t_wft_bool : forall D, ok D -> t_wft D t_typ_bool
   | t_wft_pair : forall D t1 t2,
       t_wft D t1 -> t_wft D t2 -> t_wft D (t_typ_pair t1 t2)
   | t_wft_arrow : forall L D t1 t2,
@@ -67,26 +72,17 @@ Inductive t_wft : env_type -> typ -> Prop :=
 
 Hint Constructors t_wft.
 
-(* Delta |- Gamma *)
-Inductive t_ok : env_type -> env_term -> Prop :=
-  | t_ok_empty : forall D,
-      ok D -> t_ok D empty
-  | t_ok_typ : forall D G x t,
-      t_ok D G -> t_wft D t -> x # G -> t_ok D (G & x ~ t).
-
-Hint Constructors t_ok.
-
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
 (* NOTE: Might need to enforce value restrictions
          we need to be able to prove: D G |- m : t -> term m *)
 Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
   | t_typing_var : forall D G x t,
-      t_ok D G -> binds x t G -> t_typing D G (t_trm_fvar x) t
+      wfenv (t_wft D) G -> binds x t G -> t_typing D G (t_trm_fvar x) t
   | t_typing_true : forall D G,
-      t_ok D G -> t_typing D G t_trm_true t_typ_bool
+      wfenv (t_wft D) G -> t_typing D G t_trm_true t_typ_bool
   | t_typing_false : forall D G,
-      t_ok D G -> t_typing D G t_trm_false t_typ_bool
+      wfenv (t_wft D) G -> t_typing D G t_trm_false t_typ_bool
   | t_typing_pair : forall D G u1 u2 t1 t2,
       t_typing D G u1 t1 -> t_typing D G u2 t2 -> t_value u1 -> t_value u2 ->
       t_typing D G (t_trm_pair u1 u2) (t_typ_pair t1 t2)
@@ -110,8 +106,8 @@ Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
       (forall x, x \notin L -> t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
       t_typing D G (t_trm_let_snd u m) t
   | t_typing_app : forall D G u1 u2 t t1 t2,
-      t_wft D t ->
       t_typing D G u1 (t_typ_arrow t1 t2) ->
+      t_wft D t ->
       t_typing D G u2 (open_tt t1 t) ->
       t_typing D G (t_trm_app u1 t u2) (open_tt t2 t).
 
@@ -174,7 +170,8 @@ with t_value_context : bool (* accept only values? *) -> ctx -> Prop :=
 Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
   : ctx -> env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
   | t_context_typing_hole : forall D_hole G_hole T_hole D G,
-      t_ok D_hole G_hole -> t_ok D G -> extends G_hole G -> extends D_hole D ->
+      wfenv (t_wft D_hole) G_hole -> wfenv (t_wft D) G ->
+      extends G_hole G -> extends D_hole D ->
       t_context_typing t_ctx_hole D_hole G_hole T_hole D G T_hole
   | t_context_typing_pair_left : forall C D_hole G_hole T_hole D G u t1 t2,
       t_context_typing C D_hole G_hole T_hole D G t1 ->
@@ -230,7 +227,8 @@ Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
       t_context_typing C D_hole G_hole T_hole D G (t_typ_arrow t1 t2) ->
       t_wft D t ->
       t_typing D G u (open_tt t1 t) ->
-      t_context_typing (t_ctx_app1 C t u) D_hole G_hole T_hole D G (open_tt t2 t)
+      t_context_typing (t_ctx_app1 C t u) D_hole G_hole T_hole
+                       D G (open_tt t2 t)
   | t_context_typing_app2 : forall C D_hole G_hole T_hole D G u t t1 t2,
       t_wft D t ->
       t_typing D G u (t_typ_arrow t1 t2) ->
@@ -286,24 +284,12 @@ Definition t_ctx_equiv (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
 (* CIU equivalence *)
 (* TODO: is my CIU definition correct?  -JTP *)
 
-Inductive t_tysubst_satisfies (* |- d : D *) : subst_type -> env_type -> Prop :=
-  | t_tysubst_satisfies_empty : t_tysubst_satisfies empty empty
-  | t_tysubst_satisfies_extend : forall d D X t,
-      t_tysubst_satisfies d D -> X # D -> t_wft empty t ->
-      t_tysubst_satisfies (d & X ~ t) (D & X ~ star).
-
-Inductive t_subst_satisfies (* D |- g : G *)
-  : env_type -> subst_term -> env_term -> Prop :=
-  | t_subst_satisfies_empty : forall D, ok D -> t_subst_satisfies D empty empty
-  | t_subst_satisfies_extend : forall D g G x u t,
-      t_subst_satisfies D g G -> x # G -> t_typing D empty u t ->
-      t_subst_satisfies D (g & x ~ u) (G & x ~ t).
-
 Definition ciu_approx (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
   t_typing D G m1 t /\ t_typing D G m2 t /\
   forall E d g u,
     t_eval_context E ->
     t_context_typing E empty empty t empty empty t_typ_bool ->
-    t_tysubst_satisfies d D -> t_subst_satisfies D g G ->
-    t_eval (plug E (subst_te d (subst_ee g m1))) u ->
-    t_eval (plug E (subst_te d (subst_ee g m2))) u.
+    relenv t_type d (fun _ => True) D (fun t _ => t_wft empty t) ->
+    relenv t_value g t_type G (t_typing D empty) ->
+    t_eval (plug E (subst_te d (t_subst_ee g m1))) u ->
+    t_eval (plug E (subst_te d (t_subst_ee g m2))) u.

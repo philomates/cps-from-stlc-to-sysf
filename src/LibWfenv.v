@@ -118,4 +118,9 @@ Proof.
   intros. apply wfenv_push_inv in H5. apply wfenv_push; auto.
 Qed.
 
+Lemma ok_wfenv_trivial : forall {A : Type} (E : env A),
+  ok E -> wfenv (fun _ => True) E.
+Proof.
+  induction 1; auto using wfenv_empty, wfenv_push.
+Qed.
 (* TODO: lemmas about relenv *)
