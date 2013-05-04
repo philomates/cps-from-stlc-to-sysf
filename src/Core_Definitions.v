@@ -167,16 +167,15 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
                                   (open_ee_rec l (inc_if_eq l target k) e' m)
   end.
 
-Definition open_tt t t' := open_tt_rec 0 t' t. (* t [t' / 0] *)
-Hint Immediate open_tt.
-Definition open_te e t' := open_te_rec 0 t' e. (* e [t' / 0] *)
-Definition s_open_ee e e' := open_ee_rec source 0 e' e. (* e [e' / 0] *)
-Definition t_open_ee e m' := open_ee_rec target 0 m' e. (* e [m' / 0] *)
+Notation open_tt := (fun t t' => open_tt_rec 0 t' t). (* t [t' / 0] *)
+Notation open_te := (fun e t' => open_te_rec 0 t' e). (* e [t' / 0] *)
+Notation s_open_ee := (fun e e' => open_ee_rec source 0 e' e). (* e [e' / 0] *)
+Notation t_open_ee := (fun e m' => open_ee_rec target 0 m' e). (* e [m' / 0] *)
 
-Definition open_tt_var t X := (open_tt t (t_typ_fvar X)).
-Definition open_te_var e X := (open_te e (t_typ_fvar X)).
-Definition s_open_ee_var e x := (s_open_ee e (s_trm_fvar x)).
-Definition t_open_ee_var e x := (t_open_ee e (t_trm_fvar x)).
+Notation open_tt_var := (fun t X => open_tt t (t_typ_fvar X)).
+Notation open_te_var := (fun e X => open_te e (t_typ_fvar X)).
+Notation s_open_ee_var := (fun e x => s_open_ee e (s_trm_fvar x)).
+Notation t_open_ee_var := (fun e x => t_open_ee e (t_trm_fvar x)).
 
 (* Contexts *)
 

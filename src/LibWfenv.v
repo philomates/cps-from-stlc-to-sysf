@@ -1,6 +1,6 @@
 (*****************************************************************************
  * Extension to TLC's LibEnv.ok to allow checking stronger properties of env *
- * James T. Perconti, May 2013                                               *
+ * William J. Bowman, Phillip Mates & James T. Perconti                      *
  *****************************************************************************)
 
 Require Export LibEnv.
