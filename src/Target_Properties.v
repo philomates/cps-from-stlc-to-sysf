@@ -1,8 +1,29 @@
-(* Basic properties of target language *)
+(***************************************************************************
+* Basic properties of target language                                      *
+* William J. Bowman, Phillip Mates & James T. Perconti                     *
+***************************************************************************)
 
 Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
+
+Theorem t_typing_implies_wfenv : forall D G m t,
+  t_typing D G m t -> wfenv (t_wft D) G.
+Proof.
+   induction 1; eauto.
+   eapply wfenv_push_inv_wfenv.
+   (* TODO: Need lemmas that relate wfenv with (t_wft D) and (t_wft (D & (X ~ star))) *)
+Admitted.
+
+Theorem t_typing_implies_t_term : forall D G m t,
+  t_typing D G m t -> t_term m.
+Proof.
+  induction 1; eauto.
+  skip.
+  apply t_term_if; eauto.
+  (* TODO: Typing alone does not guarentee well-formed terms, due to value/term restrictions *)
+Admitted.
+
 (** * Properties of well-formedness of a type in an environment *)
 
 (** If a type is well-formed in an environment then it is locally closed. *)
@@ -13,18 +34,6 @@ Proof.
   induction H; eauto.
 Qed.
 Hint Resolve t_wft_implies_t_type.
-
-(* Lemma t_ok_implies_t_type : forall D G t x,
-  t_ok D G -> binds x t G -> t_type t.
-Proof.
-  induction 1; intros.
-  apply binds_empty_inv in H0; contradiction.
-  apply binds_push_inv in H2.
-  destruct H2; destruct H2; subst;
-  eauto.
-Qed.
-  
-Hint Resolve t_ok_implies_t_type.*)
 
 Lemma t_typing_wft : forall D G m t,
   t_typing D G m t -> t_type t.

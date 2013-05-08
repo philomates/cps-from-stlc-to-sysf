@@ -1,10 +1,15 @@
-(* basic properties of source language *)
+(***************************************************************************
+* STLC (source language) properties                                        *
+* William J. Bowman, Phillip Mates & James T. Perconti                     *
+***************************************************************************)
 
 Require Import LibWfenv Source_Definitions Core_Infrastructure.
 
+(* ********************************************************************** *)
+
 Theorem s_typing_implies_s_ok : forall G e s,
   s_typing G e s -> wfenv s_type G.
-Proof. (* TODO *)
+Proof. 
   intros G e s P.
   induction P; auto.
   pick_fresh x.
@@ -25,6 +30,6 @@ Qed.
 
 Theorem s_typing_implies_s_term : forall G e s,
   s_typing G e s -> s_term e.
-Proof. (* TODO *)
+Proof. 
   induction 1; eauto.
 Qed. 
