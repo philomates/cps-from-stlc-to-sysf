@@ -1,24 +1,30 @@
 (* basic properties of source language *)
 
-Require Import Source_Definitions Core_Infrastructure.
+Require Import LibWfenv Source_Definitions Core_Infrastructure.
 
 Theorem s_typing_implies_s_ok : forall G e s,
-  s_typing G e s -> s_ok G.
+  s_typing G e s -> wfenv s_type G.
 Proof. (* TODO *)
   intros G e s P.
   induction P; auto.
-  unfolds s_ok.
-  split.
   pick_fresh x.
-
-Admitted. 
+  apply (wfenv_push_inv_wfenv s_type G x s1). 
+  apply* H0.
+Qed. 
 
 Theorem s_typing_implies_s_type : forall G e s,
   s_typing G e s -> s_type s.
-Proof. (* TODO *)
-Admitted. 
+Proof. 
+  induction 1; eauto.
+  apply* (wfenv_binds s_type G x s).
+  apply* s_type_arrow.
+  pick_fresh x.
+  apply* (H0 x).
+  inversion* IHs_typing1.
+Qed. 
 
 Theorem s_typing_implies_s_term : forall G e s,
   s_typing G e s -> s_term e.
 Proof. (* TODO *)
-Admitted. 
+  induction 1; eauto.
+Qed. 
