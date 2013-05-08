@@ -1,6 +1,6 @@
 (* Basic properties of target language *)
 
-Require Import Target_Definitions Core_Infrastructure.
+Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 (** * Properties of well-formedness of a type in an environment *)
@@ -14,7 +14,7 @@ Proof.
 Qed.
 Hint Resolve t_wft_implies_t_type.
 
-Lemma t_ok_implies_t_type : forall D G t x,
+(* Lemma t_ok_implies_t_type : forall D G t x,
   t_ok D G -> binds x t G -> t_type t.
 Proof.
   induction 1; intros.
@@ -24,30 +24,15 @@ Proof.
   eauto.
 Qed.
   
-Hint Resolve t_ok_implies_t_type.
+Hint Resolve t_ok_implies_t_type.*)
 
 Lemma t_typing_wft : forall D G m t,
   t_typing D G m t -> t_type t.
 Proof.
-  intros.
-  induction H; eauto;
-  try 
-    (pick_fresh x;
-      apply (@H1 x); auto).
-  inversion IHt_typing1; subst.
- (* TODO *)
-  apply subst_tt_intro.
-  apply subst_tt_type.
-  open_tt t1 t == (subst_tt X t (open_tt_var t1 X))
-  unfolds open_tt_var.
-  pick_fresh X. eapply H5.
-Admitted.
-
-Lemma t_wft_type : forall D t,
-  t_wft D t -> type t.
-Proof.
-  (* induction 1; eauto. *)
-(* Qed. *)
+  induction 1; eauto; try (pick_fresh x; apply* (H1 x)).
+  eapply t_wft_implies_t_type.
+  eapply wfenv_binds; eauto. (* TODO *)
+  inversion IHt_typing1.
 Admitted.
 
 (** Through weakening *)
