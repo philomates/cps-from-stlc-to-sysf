@@ -5,9 +5,19 @@
 
 Require Export LibEnv.
 
+(* First of all, LibEnv provides the predicate 'ok', which
+ * checks basic well-formedness of an env:
+ * namely, that there are no duplicate keys *)
+
+(* wfenv makes sure an env is ok and that all its values satisfy property P *)
 Definition wfenv {A: Type} (P : A -> Prop) (E : env A) : Prop :=
   ok E /\ forall x v, binds x v E -> P v.
 
+(* check that two wfenvs have the same set of keys and that
+ * the values for those keys are related according to R.
+ * example: if G is the type environment and g is a substitution,
+            we want the values in g to have the types in G, that is, we want
+            relenv value g type G (typing empty) *)
 Definition relenv {A B : Type}
   (P : A -> Prop) (E : env A)
   (Q : B -> Prop) (F : env B) (R : A -> B -> Prop) : Prop :=
