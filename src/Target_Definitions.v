@@ -74,20 +74,18 @@ Hint Constructors t_wft.
 
 (** Typing relation *)
 (* Delta;Gamma |- m:t *)
-(* NOTE: Might need to enforce value restrictions
-         we need to be able to prove: D G |- m : t -> term m *)
 Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
   | t_typing_var : forall D G x t,
-      wfenv (t_wft D) G -> binds x t G -> t_typing D G (t_trm_fvar x) t
+      ok D -> wfenv (t_wft D) G -> binds x t G -> t_typing D G (t_trm_fvar x) t
   | t_typing_true : forall D G,
-      wfenv (t_wft D) G -> t_typing D G t_trm_true t_typ_bool
+      ok D -> wfenv (t_wft D) G -> t_typing D G t_trm_true t_typ_bool
   | t_typing_false : forall D G,
-      wfenv (t_wft D) G -> t_typing D G t_trm_false t_typ_bool
+      ok D -> wfenv (t_wft D) G -> t_typing D G t_trm_false t_typ_bool
   | t_typing_pair : forall D G u1 u2 t1 t2,
       t_typing D G u1 t1 -> t_typing D G u2 t2 -> t_value u1 -> t_value u2 ->
       t_typing D G (t_trm_pair u1 u2) (t_typ_pair t1 t2)
   | t_typing_abs : forall L D G m t1 t2,
-      (forall X, X \notin L -> t_wft (D & X ~ star) (open_tt_var t1 X)) ->
+      wfenv (t_wft D) G ->
       (forall x X, x \notin L -> X \notin L ->
         t_typing (D & X ~ star)
                  (G & x ~ (open_tt_var t1 X))
@@ -95,20 +93,21 @@ Inductive t_typing : env_type -> env_term -> trm -> typ -> Prop :=
                  (open_tt_var t2 X)) ->
       t_typing D G (t_trm_abs t1 m) (t_typ_arrow t1 t2)
   | t_typing_if : forall D G u m1 m2 t,
-      t_typing D G u t_typ_bool -> t_typing D G m1 t -> t_typing D G m2 t ->
+      t_typing D G u t_typ_bool -> t_value u ->
+      t_typing D G m1 t -> t_typing D G m2 t ->
       t_typing D G (t_trm_if u m1 m2) t
   | t_typing_let_fst : forall L D G u m t1 t2 t,
-      t_typing D G u (t_typ_pair t1 t2) ->
+      t_typing D G u (t_typ_pair t1 t2) -> t_value u ->
       (forall x, x \notin L -> t_typing D (G & x ~ t1) (t_open_ee_var m x) t) ->
       t_typing D G (t_trm_let_fst u m) t
   | t_typing_let_snd : forall L D G u m t1 t2 t,
-      t_typing D G u (t_typ_pair t1 t2) ->
+      t_typing D G u (t_typ_pair t1 t2) -> t_value u ->
       (forall x, x \notin L -> t_typing D (G & x ~ t2) (t_open_ee_var m x) t) ->
       t_typing D G (t_trm_let_snd u m) t
   | t_typing_app : forall D G u1 u2 t t1 t2,
-      t_typing D G u1 (t_typ_arrow t1 t2) ->
+      t_typing D G u1 (t_typ_arrow t1 t2) -> t_value u1 ->
       t_wft D t ->
-      t_typing D G u2 (open_tt t1 t) ->
+      t_typing D G u2 (open_tt t1 t) -> t_value u2 ->
       t_typing D G (t_trm_app u1 t u2) (open_tt t2 t).
 
 Hint Constructors t_typing.

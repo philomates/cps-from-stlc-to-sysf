@@ -7,55 +7,78 @@ Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 
+Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
+Proof. induction 1; eauto. Qed.
+Hint Resolve t_wft_implies_t_type.
+
+Theorem t_typing_implies_ok : forall D G m t,
+  t_typing D G m t -> ok D.
+Proof.
+  induction 1; auto.
+  pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
+  apply* (H1 x X).
+Qed.
+
 Theorem t_typing_implies_wfenv : forall D G m t,
   t_typing D G m t -> wfenv (t_wft D) G.
 Proof.
-   induction 1; eauto.
-   eapply wfenv_push_inv_wfenv.
-   (* TODO: Need lemmas that relate wfenv with (t_wft D) and (t_wft (D & (X ~ star))) *)
-Admitted.
+   induction 1; auto.
+Qed.
 
 Theorem t_typing_implies_t_term : forall D G m t,
   t_typing D G m t -> t_term m.
 Proof.
   induction 1; eauto.
-  skip.
-  apply t_term_if; eauto.
-  (* TODO: Typing alone does not guarentee well-formed terms, due to value/term restrictions *)
-Admitted.
-
-(** * Properties of well-formedness of a type in an environment *)
-
-(** If a type is well-formed in an environment then it is locally closed. *)
-Lemma t_wft_implies_t_type : forall D t,
-  t_wft D t -> t_type t.
-Proof.
-  intros.
-  induction H; eauto.
+  apply t_term_value. apply_fresh* t_value_abs as X.
+  pick_fresh x.
+  assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
+    eapply t_typing_implies_wfenv. apply* H0.
+  apply wfenv_push_inv in H2. destruct H2. destruct* H3.
 Qed.
-Hint Resolve t_wft_implies_t_type.
 
 Lemma t_typing_wft : forall D G m t,
-  t_typing D G m t -> t_type t.
+  t_typing D G m t -> t_wft D t.
 Proof.
-  induction 1; eauto; try (pick_fresh x; apply* (H1 x)).
-  eapply t_wft_implies_t_type.
-  eapply wfenv_binds; eauto. (* TODO *)
-  inversion IHt_typing1.
+  intros.
+  assert (ok D). apply* t_typing_implies_ok.
+  induction H; auto.
+  eapply wfenv_binds. exact H1. exact H2.
+  pick_fresh x. apply_fresh t_wft_arrow as X.
+    assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
+      eapply t_typing_implies_wfenv. apply* H1.
+    apply wfenv_push_inv in H3. destruct H3. destruct* H4.
+    apply* (H2 x X).
+  pick_fresh x. apply* (H3 x).
+  pick_fresh x. apply* (H3 x).
+  (* TODO: need a substitution lemma to handle app case -JTP *)
 Admitted.
 
-(** Through weakening *)
+(** weakening (not sure where these might be needed but
+ *             some of them were in here before) *)
 
-Lemma t_wft_weaken : forall G T E F,
-  t_wft (E & G) T ->
-  ok (E & F & G) ->
+Lemma t_wft_weaken_generalized : forall G T E F,
+  t_wft (E & G) T -> ok (E & F & G) ->
   t_wft (E & F & G) T.
 Proof.
-  (* intros. gen_eq K: (E & G). gen E F G. *)
-  (* induction H; intros; subst; eauto. *)
+  (* TODO: I don't know what half the tactics in this proof are;
+   * we should figure that out because they seem pretty useful -JTP *)
+  intros. gen_eq K: (E & G). gen E F G.
+  induction H; intros; subst; eauto.
   (* case: var *)
-  (* apply wft_var. apply* binds_weaken. *)
+  apply* t_wft_var. apply* binds_weaken.
   (* case: all *)
-  (* apply_fresh* wft_arrow as Y. apply_ih_bind* H0. *)
-  (* apply_ih_bind* H2. *)
+  apply_fresh* t_wft_arrow as Y. apply_ih_bind* H0. apply_ih_bind* H2.
+Qed.
+
+Lemma t_wft_weaken : forall T E F,
+  t_wft E T -> ok (E & F) -> t_wft (E & F) T.
+Proof.
+  intros. rewrite <- (concat_empty_r (E & F)).
+  apply t_wft_weaken_generalized; rewrite* concat_empty_r.
+Qed.
+
+Lemma wfenv_t_wft_weaken : forall D X G,
+  wfenv (t_wft D) G -> ok (D & X ~ star) -> wfenv (t_wft (D & X ~ star)) G.
+Proof.
+  intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
