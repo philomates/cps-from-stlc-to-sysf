@@ -133,4 +133,11 @@ Lemma ok_wfenv_trivial : forall {A : Type} (E : env A),
 Proof.
   induction 1; auto using wfenv_empty, wfenv_push.
 Qed.
+
+Lemma wfenv_single : forall {A : Type} (P : A -> Prop) X (v : A),
+  P v -> wfenv P (X ~ v).
+Proof.
+  intros. rewrite <- concat_empty_l. apply wfenv_push; auto. apply wfenv_empty.
+Qed.
+
 (* TODO: lemmas about relenv *)

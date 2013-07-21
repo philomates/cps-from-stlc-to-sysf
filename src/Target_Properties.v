@@ -7,9 +7,15 @@ Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 
+Lemma t_wft_implies_ok : forall D t, t_wft D t -> ok D.
+Proof.
+  induction 1; auto.
+  pick_fresh X. assert (ok (D & X ~ star)); auto.
+Qed.
+
 Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
 Proof. induction 1; eauto. Qed.
-Hint Resolve t_wft_implies_t_type.
+Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
 Theorem t_typing_implies_ok : forall D G m t,
   t_typing D G m t -> ok D.
@@ -36,7 +42,83 @@ Proof.
   apply wfenv_push_inv in H2. destruct H2. destruct* H3.
 Qed.
 
-Lemma t_typing_wft : forall D G m t,
+Lemma subst_tt_open_tt_rec : forall t t' n d, wfenv t_type d ->
+  subst_tt d (open_tt_rec n t' t) =
+  open_tt_rec n (subst_tt d t') (subst_tt d t).
+Admitted.
+
+Lemma subst_tt_open_tt : forall t t' d, wfenv t_type d ->
+  subst_tt d (open_tt t t') =
+  open_tt (subst_tt d t) (subst_tt d t').
+Admitted.
+
+Lemma subst_tt_open_tt_var : forall t X d, X # d -> wfenv t_type d ->
+  (open_tt_var (subst_tt d t) X) = (subst_tt d (open_tt_var t X)).
+Proof.
+  intros. simpl. rewrite* subst_tt_open_tt. simpl.
+  apply get_none in H. rewrite* H.
+Qed.
+
+Lemma subst_tt_intro : forall X t t',
+  X \notin fv_tt t -> t_type t' ->
+  open_tt t t' = subst_tt (X ~ t') (open_tt_var t X).
+Admitted.
+
+(* TODO name this and next lemma better (or at least uniquely)
+        figure out if this is provable
+        see also note in the next proof -JTP
+Lemma t_wft_subst_tt : forall D X t, X # D ->
+  (forall t', t_wft D t -> t_wft D (subst_tt (X ~ t') t)) ->
+  t_wft (D & X ~ star) t.
+ *)
+  
+
+Lemma t_wft_subst_tt : forall D d t,
+  ok (D & map (fun _ => star) d) -> wfenv (t_wft D) d ->
+  t_wft (D & map (fun _ => star) d) t ->
+  t_wft D (subst_tt d t).
+Proof.
+  intros. remember (map (fun _ => star) d) as D'. gen d.
+  remember (D & D') as DD. gen D. gen D'.
+  induction H1; intros; simpl.
+  case_eq (get X d); intros.
+    eapply wfenv_binds. exact H2. apply H3.
+    apply* t_wft_var. subst*.
+    apply get_none_inv in H3.
+    assert (X # D'); subst. auto.
+    eapply binds_concat_left_inv; eauto.
+  subst. apply* t_wft_bool.
+  apply* t_wft_pair.
+  apply_fresh t_wft_arrow as X; subst;
+  rewrite* subst_tt_open_tt_var.
+  assert (forall t, t_wft D0 t ->
+          t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t1 X))).
+    intros. apply H1 with (D' := map (fun _ => star) d & X ~ star); auto.
+    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).
+  skip.
+  (* still stuck; need to get this part of this proof and also
+     prove the other lemmas above. some of them should perhaps be moved
+     to Core_Infrastructure.v -JTP *)
+  apply* (wfenv_implies (t_wft D0)).
+  assert (forall t, t_wft D0 t ->
+          t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t2 X))).
+    intros. apply H3 with (D' := map (fun _ => star) d & X ~ star); auto.
+    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).
+Admitted.
+
+Lemma t_wft_arrow_apply : forall D t1 t2 t,
+  t_wft D (t_typ_arrow t1 t2) -> t_wft D t ->
+  t_wft D (open_tt t2 t).
+Proof.
+  intros. inversion H. subst.
+  pick_fresh X.
+  assert (t_wft (D & X ~ star) (open_tt t2 (t_typ_fvar X))); auto.
+  rewrite* (subst_tt_intro X).
+  apply t_wft_subst_tt; try rewrite map_single; auto.
+  apply* ok_push. apply wfenv_single; auto.
+Qed.
+
+Theorem t_typing_implies_t_wft : forall D G m t,
   t_typing D G m t -> t_wft D t.
 Proof.
   intros.
@@ -50,8 +132,9 @@ Proof.
     apply* (H2 x X).
   pick_fresh x. apply* (H3 x).
   pick_fresh x. apply* (H3 x).
-  (* TODO: need a substitution lemma to handle app case -JTP *)
-Admitted.
+  eapply t_wft_arrow_apply.
+  apply* IHt_typing1. auto.
+Qed.
 
 (** weakening (not sure where these might be needed but
  *             some of them were in here before) *)
