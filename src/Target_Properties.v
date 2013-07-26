@@ -42,15 +42,27 @@ Proof.
   apply wfenv_push_inv in H2. destruct H2. destruct* H3.
 Qed.
 
+Lemma open_tt_rec_t_type : forall t t' n, t_type t ->
+  t = open_tt_rec n t' t.
+Admitted.
+
 Lemma subst_tt_open_tt_rec : forall t t' n d, wfenv t_type d ->
   subst_tt d (open_tt_rec n t' t) =
   open_tt_rec n (subst_tt d t') (subst_tt d t).
-Admitted.
+Proof.
+  induction t; intros; auto; simpl; try f_equal; auto. 
+  destruct (EqNat.beq_nat n0 n); auto.
+  case_eq (get v d); intros; auto.
+    assert (t_type t). apply* (wfenv_binds t_type d v).
+    apply* open_tt_rec_t_type.
+Qed.
 
 Lemma subst_tt_open_tt : forall t t' d, wfenv t_type d ->
   subst_tt d (open_tt t t') =
   open_tt (subst_tt d t) (subst_tt d t').
-Admitted.
+Proof.
+  intros. apply* subst_tt_open_tt_rec.
+Qed.
 
 Lemma subst_tt_open_tt_var : forall t X d, X # d -> wfenv t_type d ->
   (open_tt_var (subst_tt d t) X) = (subst_tt d (open_tt_var t X)).
@@ -59,10 +71,21 @@ Proof.
   apply get_none in H. rewrite* H.
 Qed.
 
+Lemma subst_tt_intro_rec : forall X t t' n,
+  X \notin fv_tt t -> t_type t' ->
+  open_tt_rec n t' t = subst_tt (X ~ t') (open_tt_rec n (t_typ_fvar X) t).
+Proof.
+  intros X t. gen X. induction t; intros; auto; simpl in *; try f_equal; auto.
+  destruct (EqNat.beq_nat n0 n); auto. simpl. rewrite get_single. rewrite* If_l.
+  rewrite get_single. rewrite* If_r.
+Qed.
+
 Lemma subst_tt_intro : forall X t t',
   X \notin fv_tt t -> t_type t' ->
   open_tt t t' = subst_tt (X ~ t') (open_tt_var t X).
-Admitted.
+Proof.
+  intros. apply* subst_tt_intro_rec.
+Qed.  
 
 (* TODO name this and next lemma better (or at least uniquely)
         figure out if this is provable
