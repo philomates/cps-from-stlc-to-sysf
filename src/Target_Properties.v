@@ -7,6 +7,8 @@ Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 
+(* Regularity of t_wft *)
+
 Lemma t_wft_implies_ok : forall D t, t_wft D t -> ok D.
 Proof.
   induction 1; auto.
@@ -17,34 +19,28 @@ Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
 Proof. induction 1; eauto. Qed.
 Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
-Theorem t_typing_implies_ok : forall D G m t,
-  t_typing D G m t -> ok D.
-Proof.
-  induction 1; auto.
-  pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
-  apply* (H1 x X).
-Qed.
+(* Basic properties of substitution *)
 
-Theorem t_typing_implies_wfenv : forall D G m t,
-  t_typing D G m t -> wfenv (t_wft D) G.
+Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
+  (open_tt_rec j t' t) = open_tt_rec i t'' (open_tt_rec j t' t) ->
+  t = open_tt_rec i t'' t.
 Proof.
-   induction 1; auto.
-Qed.
-
-Theorem t_typing_implies_t_term : forall D G m t,
-  t_typing D G m t -> t_term m.
-Proof.
-  induction 1; eauto.
-  apply t_term_value. apply_fresh* t_value_abs as X.
-  pick_fresh x.
-  assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
-    eapply t_typing_implies_wfenv. apply* H0.
-  apply wfenv_push_inv in H2. destruct H2. destruct* H3.
+  induction t; intros; simpl in *; inversion H0; f_equal*.
+  (* is there a tactic that can do this automatically from here? *)
+  case_eq (EqNat.beq_nat i n); intros; auto.
+  apply EqNat.beq_nat_true in H1. subst.
+  case_eq (EqNat.beq_nat j n); intros; auto.
+  apply EqNat.beq_nat_true in H1. subst. destruct* H.
+  rewrite H1 in H0. simpl in H0. rewrite* NPeano.Nat.eqb_refl in H0.
 Qed.
 
 Lemma open_tt_rec_t_type : forall t t' n, t_type t ->
   t = open_tt_rec n t' t.
-Admitted.
+Proof.
+  intros; gen t' n; induction H; intros; simpl in *; f_equal; auto;
+  subst; pick_fresh X;
+  apply open_tt_rec_t_type_core with (j := 0) (t' := t_typ_fvar X); auto.
+Qed.
 
 Lemma subst_tt_open_tt_rec : forall t t' n d, wfenv t_type d ->
   subst_tt d (open_tt_rec n t' t) =
@@ -87,16 +83,26 @@ Proof.
   intros. apply* subst_tt_intro_rec.
 Qed.  
 
-(* TODO name this and next lemma better (or at least uniquely)
-        figure out if this is provable
-        see also note in the next proof -JTP
+(* this lemma is nice and all but I'm not sure it actually helps -JTP *)
+Lemma subst_tt_preserves_t_type : forall d t,
+  t_type t -> wfenv t_type d -> t_type (subst_tt d t).
+Proof.
+  induction 1; intros; simpl; auto.
+  case_eq (get x d); intros. eapply wfenv_binds; eassumption. auto.
+  apply_fresh t_type_arrow as X;
+  replace (t_typ_fvar X) with (subst_tt d (t_typ_fvar X));
+  try rewrite <- subst_tt_open_tt; auto; simpl;
+  case_eq (get X d); intros; try apply binds_fresh_inv in H4;
+  try contradiction; auto.
+Qed.
+
+(* TODO it looks like I just need this version; maybe it would be easier
 Lemma t_wft_subst_tt : forall D X t, X # D ->
   (forall t', t_wft D t -> t_wft D (subst_tt (X ~ t') t)) ->
   t_wft (D & X ~ star) t.
  *)
-  
 
-Lemma t_wft_subst_tt : forall D d t,
+Lemma subst_tt_preserves_t_wft : forall D d t,
   ok (D & map (fun _ => star) d) -> wfenv (t_wft D) d ->
   t_wft (D & map (fun _ => star) d) t ->
   t_wft D (subst_tt d t).
@@ -112,21 +118,20 @@ Proof.
     eapply binds_concat_left_inv; eauto.
   subst. apply* t_wft_bool.
   apply* t_wft_pair.
-  apply_fresh t_wft_arrow as X; subst;
+  (* arrow case *)
+(*  apply_fresh t_wft_arrow as X;
   rewrite* subst_tt_open_tt_var.
   assert (forall t, t_wft D0 t ->
           t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t1 X))).
     intros. apply H1 with (D' := map (fun _ => star) d & X ~ star); auto.
     rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).
   skip.
-  (* still stuck; need to get this part of this proof and also
-     prove the other lemmas above. some of them should perhaps be moved
-     to Core_Infrastructure.v -JTP *)
+  (* still stuck *)
   apply* (wfenv_implies (t_wft D0)).
   assert (forall t, t_wft D0 t ->
           t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t2 X))).
     intros. apply H3 with (D' := map (fun _ => star) d & X ~ star); auto.
-    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).
+    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).*)
 Admitted.
 
 Lemma t_wft_arrow_apply : forall D t1 t2 t,
@@ -137,9 +142,37 @@ Proof.
   pick_fresh X.
   assert (t_wft (D & X ~ star) (open_tt t2 (t_typ_fvar X))); auto.
   rewrite* (subst_tt_intro X).
-  apply t_wft_subst_tt; try rewrite map_single; auto.
+  apply subst_tt_preserves_t_wft; try rewrite map_single; auto.
   apply* ok_push. apply wfenv_single; auto.
 Qed.
+
+(* Regularity of t_typing *) 
+
+Theorem t_typing_implies_ok : forall D G m t,
+  t_typing D G m t -> ok D.
+Proof.
+  induction 1; auto.
+  pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
+  apply* (H1 x X).
+Qed.
+
+Theorem t_typing_implies_wfenv : forall D G m t,
+  t_typing D G m t -> wfenv (t_wft D) G.
+Proof.
+   induction 1; auto.
+Qed.
+
+Theorem t_typing_implies_t_term : forall D G m t,
+  t_typing D G m t -> t_term m.
+Proof.
+  induction 1; eauto.
+  apply t_term_value. apply_fresh* t_value_abs as X.
+  pick_fresh x.
+  assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
+    eapply t_typing_implies_wfenv. apply* H0.
+  apply wfenv_push_inv in H2. destruct H2. destruct* H3.
+Qed.
+
 
 Theorem t_typing_implies_t_wft : forall D G m t,
   t_typing D G m t -> t_wft D t.
