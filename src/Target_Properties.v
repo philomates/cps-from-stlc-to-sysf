@@ -19,6 +19,35 @@ Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
 Proof. induction 1; eauto. Qed.
 Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
+(* weakening for t_wft *)
+
+Lemma t_wft_weaken_generalized : forall G T E F,
+  t_wft (E & G) T -> ok (E & F & G) ->
+  t_wft (E & F & G) T.
+Proof.
+  (* TODO: I don't know what half the tactics in this proof are;
+   * we should figure that out because they seem pretty useful -JTP *)
+  intros. gen_eq K: (E & G). gen E F G.
+  induction H; intros; subst; eauto.
+  (* case: var *)
+  apply* t_wft_var. apply* binds_weaken.
+  (* case: all *)
+  apply_fresh* t_wft_arrow as Y. apply_ih_bind* H0. apply_ih_bind* H2.
+Qed.
+
+Lemma t_wft_weaken : forall T E F,
+  t_wft E T -> ok (E & F) -> t_wft (E & F) T.
+Proof.
+  intros. rewrite <- (concat_empty_r (E & F)).
+  apply t_wft_weaken_generalized; rewrite* concat_empty_r.
+Qed.
+
+Lemma wfenv_t_wft_weaken : forall D X G,
+  wfenv (t_wft D) G -> ok (D & X ~ star) -> wfenv (t_wft (D & X ~ star)) G.
+Proof.
+  intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
+Qed.
+
 (* Basic properties of substitution *)
 
 Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
@@ -96,43 +125,36 @@ Proof.
   try contradiction; auto.
 Qed.
 
-(* TODO it looks like I just need this version; maybe it would be easier
-Lemma t_wft_subst_tt : forall D X t, X # D ->
-  (forall t', t_wft D t -> t_wft D (subst_tt (X ~ t') t)) ->
-  t_wft (D & X ~ star) t.
- *)
+(* substitution preserves t_wft *)
 
-Lemma subst_tt_preserves_t_wft : forall D d t,
-  ok (D & map (fun _ => star) d) -> wfenv (t_wft D) d ->
-  t_wft (D & map (fun _ => star) d) t ->
-  t_wft D (subst_tt d t).
+Lemma subst_tt_preserves_t_wft_generalized : forall D D' t X t',
+  X # (D & D') -> t_wft (D & D') t' -> t_wft (D & X ~ star & D') t ->
+  t_wft (D & D') (subst_tt (X ~ t') t).
 Proof.
-  intros. remember (map (fun _ => star) d) as D'. gen d.
-  remember (D & D') as DD. gen D. gen D'.
-  induction H1; intros; simpl.
-  case_eq (get X d); intros.
-    eapply wfenv_binds. exact H2. apply H3.
-    apply* t_wft_var. subst*.
-    apply get_none_inv in H3.
-    assert (X # D'); subst. auto.
-    eapply binds_concat_left_inv; eauto.
-  subst. apply* t_wft_bool.
-  apply* t_wft_pair.
-  (* arrow case *)
-(*  apply_fresh t_wft_arrow as X;
-  rewrite* subst_tt_open_tt_var.
-  assert (forall t, t_wft D0 t ->
-          t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t1 X))).
-    intros. apply H1 with (D' := map (fun _ => star) d & X ~ star); auto.
-    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).
-  skip.
-  (* still stuck *)
-  apply* (wfenv_implies (t_wft D0)).
-  assert (forall t, t_wft D0 t ->
-          t_wft D0 (subst_tt (d & X ~ t) (open_tt_var t2 X))).
-    intros. apply H3 with (D' := map (fun _ => star) d & X ~ star); auto.
-    rewrite* concat_assoc. rewrite* map_push. apply* (wfenv_push (t_wft D0)).*)
-Admitted.
+  intros. remember (D & X ~ star & D') as DXD'. gen D. gen X. gen D'.
+  induction H1; intros; subst; simpl; auto.
+  rewrite get_single. destruct (classicT (X = X0)).
+    auto.
+    apply t_wft_var; auto. eapply binds_subst; eauto.
+  apply_fresh t_wft_arrow as Y;
+  rewrite subst_tt_open_tt_var; auto; try rewrite <- concat_assoc.
+  apply H0; try rewrite concat_assoc; auto. apply* t_wft_weaken.
+  apply wfenv_single. eapply t_wft_implies_t_type. eauto.
+  apply H2; try rewrite concat_assoc; auto. apply* t_wft_weaken.
+  apply wfenv_single. eapply t_wft_implies_t_type. eauto.
+Qed.
+
+Lemma subst_tt_preserves_t_wft : forall D t X t',
+  X # D -> t_wft D t' -> t_wft (D & X ~ star) t ->
+  t_wft D (subst_tt (X ~ t') t).
+Proof.
+  intros.
+  replace D with (D & empty); replace D with (D & empty) in H0;
+    try apply concat_empty_r.
+  replace (D & X ~ star) with (D & X ~ star & empty) in H1;
+    try apply concat_empty_r.
+  apply subst_tt_preserves_t_wft_generalized; auto.
+Qed.
 
 Lemma t_wft_arrow_apply : forall D t1 t2 t,
   t_wft D (t_typ_arrow t1 t2) -> t_wft D t ->
@@ -143,7 +165,6 @@ Proof.
   assert (t_wft (D & X ~ star) (open_tt t2 (t_typ_fvar X))); auto.
   rewrite* (subst_tt_intro X).
   apply subst_tt_preserves_t_wft; try rewrite map_single; auto.
-  apply* ok_push. apply wfenv_single; auto.
 Qed.
 
 (* Regularity of t_typing *) 
@@ -173,7 +194,6 @@ Proof.
   apply wfenv_push_inv in H2. destruct H2. destruct* H3.
 Qed.
 
-
 Theorem t_typing_implies_t_wft : forall D G m t,
   t_typing D G m t -> t_wft D t.
 Proof.
@@ -190,34 +210,4 @@ Proof.
   pick_fresh x. apply* (H3 x).
   eapply t_wft_arrow_apply.
   apply* IHt_typing1. auto.
-Qed.
-
-(** weakening (not sure where these might be needed but
- *             some of them were in here before) *)
-
-Lemma t_wft_weaken_generalized : forall G T E F,
-  t_wft (E & G) T -> ok (E & F & G) ->
-  t_wft (E & F & G) T.
-Proof.
-  (* TODO: I don't know what half the tactics in this proof are;
-   * we should figure that out because they seem pretty useful -JTP *)
-  intros. gen_eq K: (E & G). gen E F G.
-  induction H; intros; subst; eauto.
-  (* case: var *)
-  apply* t_wft_var. apply* binds_weaken.
-  (* case: all *)
-  apply_fresh* t_wft_arrow as Y. apply_ih_bind* H0. apply_ih_bind* H2.
-Qed.
-
-Lemma t_wft_weaken : forall T E F,
-  t_wft E T -> ok (E & F) -> t_wft (E & F) T.
-Proof.
-  intros. rewrite <- (concat_empty_r (E & F)).
-  apply t_wft_weaken_generalized; rewrite* concat_empty_r.
-Qed.
-
-Lemma wfenv_t_wft_weaken : forall D X G,
-  wfenv (t_wft D) G -> ok (D & X ~ star) -> wfenv (t_wft (D & X ~ star)) G.
-Proof.
-  intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
