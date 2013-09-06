@@ -80,9 +80,9 @@ Inductive s_context : ctx -> Prop :=
   | s_context_app1 : forall C e,
       s_context C -> s_term e ->
       s_context (s_ctx_app1 C e)
-  | s_context_app2 : forall v C,
-      s_value v -> s_context C ->
-      s_context (s_ctx_app2 v C)
+  | s_context_app2 : forall e C,
+      s_term e -> s_context C ->
+      s_context (s_ctx_app2 e C)
   | s_context_abs : forall L T C,
       (forall x, x \notin L -> s_context (s_ctx_open_ee_var C x)) ->
       (s_type T) ->
@@ -118,7 +118,7 @@ Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
       (forall x, x \notin L -> s_context_typing (s_ctx_open_ee_var C x)
                                                 G_hole s_hole
                                                 (G & x ~ s) s') ->
-      s_type s -> (* XXX: Not sure if this check is necessary. *)
+      s_type s ->
       s_context_typing (s_ctx_abs s C) G_hole s_hole G (s_typ_arrow s s')
   | s_context_typing_if_true : forall C G_hole s_hole G e1 e3 s,
       s_typing G e1 s_typ_bool ->
@@ -129,6 +129,8 @@ Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
       s_typing G e1 s_typ_bool -> s_typing G e2 s ->
       s_context_typing C G_hole s_hole G s ->
       s_context_typing (s_ctx_if_false e1 e2 C) G_hole s_hole G s.
+
+Hint Constructors s_eval_context s_context s_context_typing.
 
 (* reduction *)
 

@@ -22,8 +22,8 @@ Definition beq_lang l1 l2 :=
   | (_, _) => false
   end.
 
-Definition inc_if_eq (l1 l2 : lang) (n : nat) : nat :=
-  if beq_lang l1 l2 then S n else n.
+Definition inc_if_eq (l1 l2 : lang) : nat -> nat :=
+  if beq_lang l1 l2 then S else id.
 
 (*** Syntax of pre-types ***)
 

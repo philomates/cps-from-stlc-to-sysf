@@ -7,7 +7,9 @@ Require Import LibWfenv Source_Definitions Core_Infrastructure.
 
 (* ********************************************************************** *)
 
-Theorem s_typing_implies_s_ok : forall G e s,
+(* regularity of s_typing *)
+
+Theorem s_typing_implies_wfenv : forall G e s,
   s_typing G e s -> wfenv s_type G.
 Proof. 
   intros G e s P.
@@ -32,4 +34,92 @@ Theorem s_typing_implies_s_term : forall G e s,
   s_typing G e s -> s_term e.
 Proof. 
   induction 1; eauto.
-Qed. 
+Qed.
+
+(* regularity of s_context_typing *)
+
+Theorem s_context_typing_implies_s_context : forall C G_hole s_hole G s,
+  s_context_typing C G_hole s_hole G s -> s_context C.
+Proof.
+  induction 1; eauto using s_typing_implies_s_term.
+Qed.
+
+Theorem s_context_typing_implies_wfenv_hole : forall C G_hole s_hole G s,
+  s_context_typing C G_hole s_hole G s -> wfenv s_type G_hole.
+Proof.
+  induction 1; auto. pick_fresh x. apply* (H0 x).
+Qed.
+
+Theorem s_context_typing_implies_s_type_hole : forall C G_hole s_hole G s,
+  s_context_typing C G_hole s_hole G s -> s_type s_hole.
+Proof.
+  induction 1; auto. pick_fresh x. apply* (H0 x).
+Qed.
+
+Theorem s_context_typing_implies_wfenv : forall C G_hole s_hole G s,
+  s_context_typing C G_hole s_hole G s -> wfenv s_type G.
+Proof.
+  induction 1; auto.
+  pick_fresh x. apply (wfenv_push_inv_wfenv s_type G x s). apply* H0.
+Qed.
+
+Theorem s_context_typing_implies_s_type : forall C G_hole s_hole G s,
+  s_context_typing C G_hole s_hole G s -> s_type s.
+Proof.
+  induction 1; eauto using s_typing_implies_s_type.
+  inversion* IHs_context_typing.
+  apply s_typing_implies_s_type in H. inversion* H.
+  apply* s_type_arrow. pick_fresh x. apply* (H0 x).
+Qed.
+
+(* Other properties of contexts *)
+
+Theorem s_eval_context_implies_s_context : forall E,
+  s_eval_context E -> s_context E.
+Proof.
+  induction 1; auto.
+Qed.
+
+Lemma open_ee_rec_s_term_core : forall e j e' e'' i, i <> j ->
+  (open_ee_rec source j e' e) =
+    open_ee_rec source i e'' (open_ee_rec source j e' e) ->
+  e = open_ee_rec source i e'' e.
+Proof.
+  (* literally just copy-pasted this proof from open_tt_rec_t_type_core
+     in Target_Properties.v and changed t to e in the first tactic.
+     seems like there is some automation to be done here -JTP *)
+  induction e; intros; simpl in *; inversion H0; f_equal*.
+  case_eq (EqNat.beq_nat i n); intros; auto.
+  apply EqNat.beq_nat_true in H1. subst.
+  case_eq (EqNat.beq_nat j n); intros; auto.
+  apply EqNat.beq_nat_true in H1. subst. destruct* H.
+  rewrite H1 in H0. simpl in H0. rewrite* NPeano.Nat.eqb_refl in H0.
+Qed.
+
+Lemma open_ee_rec_s_term : forall e e' n,
+  s_term e -> open_ee_rec source n e' e = e.
+Proof.
+  intros. gen n. induction H; intros; simpl; f_equal*.
+  induction H; intros; auto.
+  pick_fresh x. symmetry. simpl. f_equal.
+  replace (inc_if_eq source source) with S; auto.
+  apply open_ee_rec_s_term_core with (j := 0) (e' := s_trm_fvar x).
+  auto.
+  (* missing IH here because I'm not using the right induction scheme *)
+Admitted.
+
+Lemma plug_s_term_open_ee_rec : forall C e n e', s_term e ->
+  open_ee_rec source n e' (plug C e) = plug (ctx_open_ee_rec source n e' C) e.
+Proof.
+  induction C; intros; simpl; f_equal; auto using open_ee_rec_s_term.
+Qed.
+
+Theorem plug_preserves_s_term : forall C e,
+  s_context C -> s_term e -> s_term (plug C e).
+Proof.
+  induction 1; intros; simpl; auto.
+  apply s_term_value. apply_fresh s_value_abs as x; auto.
+  rewrite* plug_s_term_open_ee_rec.
+Qed.
+
+(* TODO: plug_preserves_s_typing *)

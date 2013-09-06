@@ -19,7 +19,7 @@ Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
 Proof. induction 1; eauto. Qed.
 Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
-(* weakening for t_wft *)
+(* Weakening for t_wft *)
 
 Lemma t_wft_weaken_generalized : forall G T E F,
   t_wft (E & G) T -> ok (E & F & G) ->
@@ -48,7 +48,7 @@ Proof.
   intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
 
-(* Basic properties of substitution *)
+(* Basic properties of subst_tt *)
 
 Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
   (open_tt_rec j t' t) = open_tt_rec i t'' (open_tt_rec j t' t) ->
@@ -125,7 +125,7 @@ Proof.
   try contradiction; auto.
 Qed.
 
-(* substitution preserves t_wft *)
+(* subst_tt preserves t_wft *)
 
 Lemma subst_tt_preserves_t_wft_generalized : forall D D' t X t',
   X # (D & D') -> t_wft (D & D') t' -> t_wft (D & X ~ star & D') t ->
