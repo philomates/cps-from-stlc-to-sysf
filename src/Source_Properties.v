@@ -99,14 +99,15 @@ Qed.
 Lemma open_ee_rec_s_term : forall e e' n,
   s_term e -> open_ee_rec source n e' e = e.
 Proof.
-  intros. gen n. induction H; intros; simpl; f_equal*.
-  induction H; intros; auto.
-  pick_fresh x. symmetry. simpl. f_equal.
+  intros. gen n.
+  apply (s_term_mut (fun e WF => forall n, open_ee_rec source n e' e = e)
+                    (fun v WF => forall n, open_ee_rec source n e' v = v));
+  intros; simpl; f_equal*.
+  pick_fresh x. symmetry.
   replace (inc_if_eq source source) with S; auto.
   apply open_ee_rec_s_term_core with (j := 0) (e' := s_trm_fvar x).
-  auto.
-  (* missing IH here because I'm not using the right induction scheme *)
-Admitted.
+  auto. symmetry; auto.
+Qed.
 
 Lemma plug_s_term_open_ee_rec : forall C e n e', s_term e ->
   open_ee_rec source n e' (plug C e) = plug (ctx_open_ee_rec source n e' C) e.
@@ -122,4 +123,18 @@ Proof.
   rewrite* plug_s_term_open_ee_rec.
 Qed.
 
-(* TODO: plug_preserves_s_typing *)
+(* TODO: how to prove this? or maybe we should change s_context_typing
+ * to concatenate something instead of extending arbitrarily.
+ * would that be ok or would something else break? *)
+Lemma s_typing_weaken : forall G G' e s,
+  extends G' G -> s_typing G' e s -> s_typing G e s.
+Admitted.
+
+Theorem plug_preserves_s_typing : forall C e G_e s_e G s,
+  s_context_typing C G_e s_e G s -> s_typing G_e e s_e ->
+  s_typing G (plug C e) s.
+Proof.
+  intros; induction H; simpl; eauto using s_typing_weaken.
+  apply_fresh s_typing_abs as x; auto.
+  rewrite plug_s_term_open_ee_rec; eauto using s_typing_implies_s_term.
+Qed.
