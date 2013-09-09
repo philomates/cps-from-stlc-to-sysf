@@ -72,13 +72,17 @@ Proof.
   apply* s_type_arrow. pick_fresh x. apply* (H0 x).
 Qed.
 
-(* Other properties of contexts *)
+(* Weakening for s_typing *)
 
-Theorem s_eval_context_implies_s_context : forall E,
-  s_eval_context E -> s_context E.
-Proof.
-  induction 1; auto.
-Qed.
+(* needed for hole case of plug_preserves_s_typing *)
+(* TODO: how to prove this? or maybe we should change s_context_typing
+ * to concatenate something instead of extending arbitrarily.
+ * would that be ok or would something else break? *)
+Lemma s_typing_weaken : forall G G' e s,
+  extends G' G -> s_typing G' e s -> s_typing G e s.
+Admitted.
+
+(* Basic properties of subst_ee and open_ee *)
 
 Lemma open_ee_rec_s_term_core : forall e j e' e'' i, i <> j ->
   (open_ee_rec source j e' e) =
@@ -115,6 +119,14 @@ Proof.
   induction C; intros; simpl; f_equal; auto using open_ee_rec_s_term.
 Qed.
 
+(* Other properties of contexts *)
+
+Theorem s_eval_context_implies_s_context : forall E,
+  s_eval_context E -> s_context E.
+Proof.
+  induction 1; auto.
+Qed.
+
 Theorem plug_preserves_s_term : forall C e,
   s_context C -> s_term e -> s_term (plug C e).
 Proof.
@@ -122,13 +134,6 @@ Proof.
   apply s_term_value. apply_fresh s_value_abs as x; auto.
   rewrite* plug_s_term_open_ee_rec.
 Qed.
-
-(* TODO: how to prove this? or maybe we should change s_context_typing
- * to concatenate something instead of extending arbitrarily.
- * would that be ok or would something else break? *)
-Lemma s_typing_weaken : forall G G' e s,
-  extends G' G -> s_typing G' e s -> s_typing G e s.
-Admitted.
 
 Theorem plug_preserves_s_typing : forall C e G_e s_e G s,
   s_context_typing C G_e s_e G s -> s_typing G_e e s_e ->

@@ -48,7 +48,7 @@ Proof.
   intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
 
-(* Basic properties of subst_tt *)
+(* Basic properties of subst_tt and open_tt *)
 
 Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
   (open_tt_rec j t' t) = open_tt_rec i t'' (open_tt_rec j t' t) ->
