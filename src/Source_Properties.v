@@ -89,15 +89,10 @@ Lemma open_ee_rec_s_term_core : forall e j e' e'' i, i <> j ->
     open_ee_rec source i e'' (open_ee_rec source j e' e) ->
   e = open_ee_rec source i e'' e.
 Proof.
-  (* literally just copy-pasted this proof from open_tt_rec_t_type_core
-     in Target_Properties.v and changed t to e in the first tactic.
-     seems like there is some automation to be done here -JTP *)
   induction e; intros; simpl in *; inversion H0; f_equal*.
-  case_eq (EqNat.beq_nat i n); intros; auto.
-  apply EqNat.beq_nat_true in H1. subst.
-  case_eq (EqNat.beq_nat j n); intros; auto.
-  apply EqNat.beq_nat_true in H1. subst. destruct* H.
-  rewrite H1 in H0. simpl in H0. rewrite* NPeano.Nat.eqb_refl in H0.
+  case_if*. apply EqNat.beq_nat_true in H1. subst.
+  case_if. apply EqNat.beq_nat_true in H1. substs. destruct* H.
+  simpl in *. case_if*. rewrite NPeano.Nat.eqb_refl in H3. false.
 Qed.
 
 Lemma open_ee_rec_s_term : forall e e' n,
