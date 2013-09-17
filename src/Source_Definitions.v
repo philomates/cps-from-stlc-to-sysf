@@ -99,9 +99,9 @@ Inductive s_context : ctx -> Prop :=
 Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
   : ctx -> env_term -> typ -> env_term -> typ -> Prop :=
   | s_context_typing_hole : forall G_hole s_hole G,
-      wfenv s_type G_hole -> wfenv s_type G -> extends G_hole G -> 
+      wfenv s_type G_hole -> wfenv s_type (G_hole & G) ->
       s_type s_hole ->
-      s_context_typing s_ctx_hole G_hole s_hole G s_hole
+      s_context_typing s_ctx_hole G_hole s_hole (G_hole & G) s_hole
   | s_context_typing_if : forall C G_hole s_hole G e2 e3 s,
       s_context_typing C G_hole s_hole G s_typ_bool ->
       s_typing G e2 s -> s_typing G e3 s ->

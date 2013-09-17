@@ -74,13 +74,23 @@ Qed.
 
 (* Weakening for s_typing *)
 
-(* needed for hole case of plug_preserves_s_typing *)
-(* TODO: how to prove this? or maybe we should change s_context_typing
- * to concatenate something instead of extending arbitrarily.
- * would that be ok or would something else break? *)
+Lemma s_typing_weaken_generalized : forall E F G e s,
+  s_typing (E & G) e s -> wfenv s_type (E & F & G) ->
+  s_typing (E & F & G) e s.
+Proof.
+  intros. gen_eq K: (E & G). gen E F G.
+  induction H; intros; subst*.
+  apply* s_typing_var. apply* binds_weaken. eapply wfenv_ok. eassumption.
+  apply_fresh* s_typing_abs as x. apply_ih_bind* H0.
+  apply wfenv_push; auto.
+Qed.
+
 Lemma s_typing_weaken : forall G G' e s,
-  extends G' G -> s_typing G' e s -> s_typing G e s.
-Admitted.
+  s_typing G e s -> wfenv s_type (G & G') -> s_typing (G & G') e s.
+Proof.
+  intros. rewrite <- (concat_empty_r (G & G')).
+  apply s_typing_weaken_generalized; rewrite* concat_empty_r.
+Qed.
 
 (* Basic properties of subst_ee and open_ee *)
 
