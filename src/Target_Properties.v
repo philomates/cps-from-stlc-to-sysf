@@ -196,6 +196,49 @@ Proof.
     apply wfenv_push_inv in H0. destructs* H0.
 Qed.
 
+(* weakening for t_typing *)
+
+Lemma t_typing_weaken_delta_generalized : forall D D' D'' G m t,
+  t_typing (D & D'') G m t -> ok (D & D' & D'') ->
+  t_typing (D & D' & D'') G m t.
+Proof.
+  intros. gen_eq DD : (D & D''). gen D D' D''.
+  apply (t_typing_mut
+          (fun DD G m t pf =>
+            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
+            t_typing (D & D' & D'') G m t)
+          (fun DD G u t pf =>
+            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
+            t_value_typing (D & D' & D'') G u t));
+  intros; subst; auto using t_wft_weaken_generalized;
+  try (pick_fresh x; apply_fresh t_value_typing_abs as X);
+  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 & D''))).
+  intros. apply_ih_bind* H0.
+Qed.
+
+Lemma t_typing_weaken_delta : forall D D' G m t,
+  t_typing D G m t -> ok (D & D') -> t_typing (D & D') G m t.
+
+Lemma t_typing_weaken_generalized : forall D G G' G'' m t,
+  t_typing D (G & G'') m t -> wfenv (t_wft D) (G & G' & G'') ->
+  t_typing D (G & G' & G'') m t.
+
+Lemma t_typing_weaken : forall D G G' m t,
+  t_typing D G m t -> wfenv (t_wft D) (G & G') -> t_typing D (G & G') m t.
+
+(* basic properties of subst_ee and open_ee *)
+
+Lemma open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
+  (open_ee_rec target j m' m) =
+    open_ee_rec target i m'' (open_ee_rec target j m' m) ->
+  m = open_ee_rec target i m'' m.
+
+Lemma open_ee_rec_t_term : forall m m' i,
+  t_term m -> open_ee_rec target i m' m = m.
+
+Lemma plug_t_term_open_ee_rec : forall C m i m', s_term m ->
+  open_ee_rec target i m' (plug C m) = plug (ctx_open_ee_rec target i m' C) m.
+
 (* regularity of t_context_typing *)
 
 Theorem t_context_typing_implies_t_context : forall b C Dh Gh th D G t,
