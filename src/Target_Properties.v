@@ -156,42 +156,79 @@ Qed.
 Theorem t_typing_implies_ok : forall D G m t,
   t_typing D G m t -> ok D.
 Proof.
-  induction 1; auto.
-  pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
-  apply* (H1 x X).
+  apply (t_typing_mut (fun D G m t pf => ok D)
+                      (fun D G u t pf => ok D)); auto.
+  intros. pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
+  apply* (H x X).
 Qed.
 
 Theorem t_typing_implies_wfenv : forall D G m t,
   t_typing D G m t -> wfenv (t_wft D) G.
 Proof.
-   induction 1; auto.
+  apply (t_typing_mut (fun D G m t pf => wfenv (t_wft D) G)
+                      (fun D G u t pf => wfenv (t_wft D) G)); auto.
 Qed.
 
 Theorem t_typing_implies_t_term : forall D G m t,
   t_typing D G m t -> t_term m.
 Proof.
-  induction 1; eauto.
-  apply t_term_value. apply_fresh* t_value_abs as X.
+  apply (t_typing_mut (fun D G m t pf => t_term m)
+                      (fun D G u t pf => t_value u)); eauto.
+  intros. apply_fresh* t_value_abs as X.
   pick_fresh x.
   assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
-    eapply t_typing_implies_wfenv. apply* H0.
-  apply wfenv_push_inv in H2. destruct H2. destruct* H3.
+    eapply t_typing_implies_wfenv. apply* t.
+  apply wfenv_push_inv in H0. destructs* H0.
 Qed.
 
 Theorem t_typing_implies_t_wft : forall D G m t,
   t_typing D G m t -> t_wft D t.
 Proof.
-  intros.
-  assert (ok D). apply* t_typing_implies_ok.
-  induction H; auto.
-  eapply wfenv_binds. exact H1. exact H2.
-  pick_fresh x. apply_fresh t_wft_arrow as X.
-    assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
-      eapply t_typing_implies_wfenv. apply* H1.
-    apply wfenv_push_inv in H3. destruct H3. destruct* H4.
-    apply* (H2 x X).
-  pick_fresh x. apply* (H3 x).
-  pick_fresh x. apply* (H3 x).
-  eapply t_wft_arrow_apply.
-  apply* IHt_typing1. auto.
+  apply (t_typing_mut (fun D G m t pf => t_wft D t)
+                      (fun D G u t pf => t_wft D t)); intros; auto.
+  pick_fresh x. apply* (H0 x).
+  pick_fresh x. apply* (H0 x).
+  apply* t_wft_arrow_apply.
+  apply* (wfenv_binds (t_wft D)).
+  pick_fresh x. apply_fresh t_wft_arrow as X; try (apply* (H x X)).
+    assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt_var t1 X)).
+      apply* t_typing_implies_wfenv.
+    apply wfenv_push_inv in H0. destructs* H0.
 Qed.
+
+(* regularity of t_context_typing *)
+
+Theorem t_context_typing_implies_t_context : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> t_context b C.
+
+Theorem t_context_typing_implies_ok_hole : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> ok Dh.
+
+Theorem t_context_typing_implies_wfenv_hole : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> wfenv (t_wft Dh) Gh.
+
+Theorem t_context_typing_implies_t_wft_hole : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> t_wft Dh th.
+
+Theorem t_context_typing_implies_ok : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> ok D.
+
+Theorem t_context_typing_implies_wfenv : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> wfenv (t_wft D) G.
+
+Theorem t_context_typing_implies_t_wft : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> t_wft D t.
+
+(* other properties of contexts *)
+
+Theorem t_eval_context_implies_t_context : forall E,
+ t_eval_context E -> t_context false E.
+Proof. intros. inverts* H. Qed.
+
+Theorem plug_preserves_t_term : forall C m,
+  t_context false C -> t_term m -> t_term (plug C m).
+(* TODO more versions for various cases? *)
+
+Theorem plug_preserves_t_typing : forall C e D_e G_e t_e D G t,
+  t_context_typing false C D_e G_e t_e D G t -> t_typing D_e G_e e t_e ->
+  t_typing D G (plug C e) t.

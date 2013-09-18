@@ -115,6 +115,9 @@ with t_value_typing : env_type -> env_term -> trm -> typ -> Prop :=
                  (open_tt_var t2 X)) ->
       t_value_typing D G (t_trm_abs t1 m) (t_typ_arrow t1 t2).
 
+Scheme t_typing_mut := Induction for t_typing Sort Prop
+with t_value_typing_mut := Induction for t_value_typing Sort Prop.
+
 Hint Constructors t_typing t_value_typing.
 
 (* CPS makes evaluation context of target lang simple *)
@@ -163,6 +166,11 @@ with t_value_context : bool (* accept only values? *) -> ctx -> Prop :=
       (forall x X, x \notin L -> X \notin L ->
         t_context b (ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
       t_value_context b (t_ctx_abs t C).
+
+Scheme t_context_mut := Induction for t_context Sort Prop
+with t_value_context_mut := Induction for t_value_context Sort Prop.
+
+Hint Constructors t_context t_value_context.
 
 (* typing for contexts *)
 
@@ -249,8 +257,11 @@ with t_value_context_typing (* |- Cv : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
       t_value_context_typing b (t_ctx_abs t1 C) D_hole G_hole t_hole
                                                 D G (t_typ_arrow t1 t2).
 
-Hint Constructors t_context t_value_context
-                  t_context_typing t_value_context_typing.
+Scheme t_context_typing_mut := Induction for t_context_typing Sort Prop
+with t_value_context__typingmut
+  := Induction for t_value_context_typing Sort Prop.
+
+Hint Constructors t_context_typing t_value_context_typing.
 
 (** reduction *)
 
