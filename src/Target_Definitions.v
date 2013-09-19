@@ -138,14 +138,22 @@ Inductive t_context : bool (* accept only values? *) -> ctx -> Prop :=
   | t_context_if_false : forall u m1 b C,
       t_value u -> t_term m1 -> t_context b C ->
       t_context b (t_ctx_if_false u m1 C)
-  | t_context_let_fst : forall b C m,
-      t_value_context b C -> t_term m -> t_context b (t_ctx_let_fst C m)
-  | t_context_let_fst_k : forall u b C,
-      t_value u -> t_context b C -> t_context b (t_ctx_let_fst_k u C)
-  | t_context_let_snd : forall b C m,
-      t_value_context b C -> t_term m -> t_context b (t_ctx_let_snd C m)
-  | t_context_let_snd_k : forall u b C,
-      t_value u -> t_context b C -> t_context b (t_ctx_let_snd_k u C)
+  | t_context_let_fst : forall L b C m,
+      t_value_context b C ->
+      (forall x, x \notin L -> t_term (t_open_ee_var m x)) ->
+      t_context b (t_ctx_let_fst C m)
+  | t_context_let_fst_k : forall L u b C,
+      t_value u ->
+      (forall x, x \notin L -> t_context b (t_ctx_open_ee_var C x)) ->
+      t_context b (t_ctx_let_fst_k u C)
+  | t_context_let_snd : forall L b C m,
+      t_value_context b C ->
+      (forall x, x \notin L -> t_term (t_open_ee_var m x)) ->
+      t_context b (t_ctx_let_snd C m)
+  | t_context_let_snd_k : forall L u b C,
+      t_value u ->
+      (forall x, x \notin L -> t_context b (t_ctx_open_ee_var C x)) ->
+      t_context b (t_ctx_let_snd_k u C)
   | t_context_app1 : forall b C t u,
       t_value_context b C -> t_type t -> t_value u ->
       t_context b (t_ctx_app1 C t u)
@@ -155,13 +163,13 @@ Inductive t_context : bool (* accept only values? *) -> ctx -> Prop :=
 
 with t_value_context : bool (* accept only values? *) -> ctx -> Prop :=
   | t_value_context_hole : t_value_context true t_ctx_hole
-  | t_context_pair_left : forall b C u,
+  | t_value_context_pair_left : forall b C u,
       t_value_context b C -> t_value u ->
       t_value_context b (t_ctx_pair_left C u)
-  | t_context_pair_right : forall b C u,
+  | t_value_context_pair_right : forall b C u,
       t_value u -> t_value_context b C ->
       t_value_context b (t_ctx_pair_right u C)
-  | t_context_abs : forall L t b C,
+  | t_value_context_abs : forall L t b C,
       (forall X, X \notin L -> t_type (open_tt_var t X)) ->
       (forall x X, x \notin L -> X \notin L ->
         t_context b (ctx_open_te_var (t_ctx_open_ee_var C x) X)) ->
@@ -202,7 +210,8 @@ Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
     : forall b L C D_hole G_hole t_hole D G u t1 t2 t,
       t_value_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
-        t_context_typing b C D_hole G_hole t_hole D (G & x ~ t1) t) ->
+        t_context_typing b (t_ctx_open_ee_var C x) D_hole G_hole t_hole
+                                                   D (G & x ~ t1) t) ->
       t_context_typing b (t_ctx_let_fst_k u C) D_hole G_hole t_hole D G t
   | t_context_typing_let_snd : forall b L Cv D_hole G_hole t_hole D G m t1 t2 t,
       t_value_context_typing b Cv D_hole G_hole t_hole D G (t_typ_pair t1 t2) ->
@@ -213,7 +222,8 @@ Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
     : forall b L C D_hole G_hole t_hole D G u t1 t2 t,
       t_value_typing D G u (t_typ_pair t1 t2) ->
       (forall x, x \notin L ->
-        t_context_typing b C D_hole G_hole t_hole D (G & x ~ t2) t) ->
+        t_context_typing b (t_ctx_open_ee_var C x) D_hole G_hole t_hole
+                                                   D (G & x ~ t2) t) ->
       t_context_typing b (t_ctx_let_snd_k u C) D_hole G_hole t_hole D G t
   | t_context_typing_app1 : forall b Cv D_hole G_hole t_hole D G u t t1 t2,
       t_value_context_typing b Cv D_hole G_hole t_hole

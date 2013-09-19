@@ -201,6 +201,8 @@ Proof.
   apply wfenv_push_inv in H0. destructs* H0.
 Qed.
 
+Hint Resolve t_typing_implies_t_term t_value_typing_implies_t_value.
+
 Theorem t_typing_implies_t_wft : forall D G m t,
   t_typing D G m t -> t_wft D t.
 Proof.
@@ -290,13 +292,10 @@ Lemma open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
 Lemma open_ee_rec_t_term : forall m m' i,
   t_term m -> open_ee_rec target i m' m = m.
 
-Lemma plug_t_term_open_ee_rec : forall C m i m', s_term m ->
+Lemma plug_t_term_open_ee_rec : forall C m i m', t_term m ->
   open_ee_rec target i m' (plug C m) = plug (ctx_open_ee_rec target i m' C) m.
 
 (* regularity of t_context_typing *)
-
-Theorem t_context_typing_implies_t_context : forall b C Dh Gh th D G t,
-  t_context_typing b C Dh Gh th D G t -> t_context b C.
 
 Theorem t_context_typing_implies_ok_hole : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> ok Dh.
@@ -312,9 +311,22 @@ Theorem t_context_typing_implies_ok : forall b C Dh Gh th D G t,
 
 Theorem t_context_typing_implies_wfenv : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> wfenv (t_wft D) G.
+Admitted.
 
 Theorem t_context_typing_implies_t_wft : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> t_wft D t.
+
+Theorem t_context_typing_implies_t_context : forall b C Dh Gh th D G t,
+  t_context_typing b C Dh Gh th D G t -> t_context b C.
+Proof.
+  eapply (t_context_typing_mut
+           (fun b C Dh Gh th D G t pf => t_context b C)
+           (fun b C Dh Gh th D G t pf => t_value_context b C)); intros; eauto.
+  pick_fresh x. apply_fresh* t_value_context_abs as X.
+  assert (IH : wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt_var t1 X)).
+    eapply t_context_typing_implies_wfenv. apply* (t x X).
+  apply wfenv_push_inv in IH. destructs IH. apply* t_wft_implies_t_type.
+Qed.
 
 (* other properties of contexts *)
 
