@@ -282,6 +282,12 @@ Proof.
   apply* t_typing_weaken_generalized. rewrite* concat_empty_r.
 Qed.
 
+(* basic properties of subst_te and open_te *)
+
+Lemma plug_t_term_open_te_rec : forall C m i t, t_term m ->
+  open_te_rec i t (plug C m) = plug (ctx_open_te_rec i t C) m.
+Admitted.
+
 (* basic properties of subst_ee and open_ee *)
 
 Lemma open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
@@ -294,6 +300,7 @@ Lemma open_ee_rec_t_term : forall m m' i,
 
 Lemma plug_t_term_open_ee_rec : forall C m i m', t_term m ->
   open_ee_rec target i m' (plug C m) = plug (ctx_open_ee_rec target i m' C) m.
+Admitted.
 
 (* regularity of t_context_typing *)
 
@@ -380,10 +387,49 @@ Theorem t_eval_context_implies_t_context : forall E,
  t_eval_context E -> t_context false E.
 Proof. intros. inverts* H. Qed.
 
-Theorem plug_preserves_t_term : forall C m,
-  t_context false C -> t_term m -> t_term (plug C m).
-(* TODO more versions for various cases? *)
+Theorem plug_preserves_t_term : forall b C m,
+  t_context b C -> (if b then t_value m else t_term m) -> t_term (plug C m).
+Proof.
+  intros b C m.
+  apply (t_context_mut (fun b C pf => (if b then t_value m else t_term m) ->
+                          t_term (plug C m))
+                       (fun b C pf => (if b then t_value m else t_term m) ->
+                          t_value (plug C m)));
+  intros; simpl; auto;
+  try apply_fresh* t_term_let_fst as x; try apply_fresh* t_term_let_snd as x;
+  try (pick_fresh x; apply_fresh* t_value_abs as X; intros);
+  try rewrite* plug_t_term_open_ee_rec; try rewrite* plug_t_term_open_te_rec;
+  case_if*.
+Qed.
 
-Theorem plug_preserves_t_typing : forall C e D_e G_e t_e D G t,
-  t_context_typing false C D_e G_e t_e D G t -> t_typing D_e G_e e t_e ->
+Theorem plug_preserves_t_typing : forall b C e D_e G_e t_e D G t,
+  t_context_typing b C D_e G_e t_e D G t ->
+  (if b then t_value_typing D_e G_e e t_e else t_typing D_e G_e e t_e) ->
   t_typing D G (plug C e) t.
+Proof.
+  intros b C e.
+  apply (t_context_typing_mut
+           (fun b C D_e G_e t_e D G t pf =>
+             (if b then t_value_typing D_e G_e e t_e
+                   else t_typing D_e G_e e t_e) ->
+             t_typing D G (plug C e) t)
+           (fun b C D_e G_e t_e D G t pf =>
+             (if b then t_value_typing D_e G_e e t_e
+                   else t_typing D_e G_e e t_e) ->
+             t_value_typing D G (plug C e) t));
+  intros; simpl; auto.
+  apply* t_typing_weaken. apply* t_typing_weaken_delta. case_if*.
+  case_if*.
+  apply_fresh* t_typing_let_fst as x. rewrite* plug_t_term_open_ee_rec.
+    case_if*.
+  case_if*.
+  apply_fresh* t_typing_let_snd as x. rewrite* plug_t_term_open_ee_rec.
+    case_if*.
+  case_if*.
+  case_if*.
+  (* TODO: need separate weakening lemmas for t_value_typing *)
+  (* apply* t_value_typing_weaken.
+     apply* t_value_typing_weaken_delta. case_if*. *) skip.
+  pick_fresh x. apply_fresh* t_value_typing_abs as X. intros.
+    rewrite* plug_t_term_open_ee_rec; case_if*; rewrite* plug_t_term_open_te_rec.
+Qed.
