@@ -92,9 +92,17 @@ Ltac gather_vars :=
   let F := gather_vars_with (fun x : trm => fv_ee target x) in
   let G := gather_vars_with (fun x : env_type => dom x) in
   let H := gather_vars_with (fun x : env_term => dom x) in
-  let I := gather_vars_with (fun x : subst_type => dom x) in
-  let J := gather_vars_with (fun x : subst_term => dom x) in
-  constr:(A \u B \u C \u D \u E \u F \u G \u H \u I \u J).
+  let I := gather_vars_with (fun x : env_term => fold_vars fv_tt x) in
+  let J := gather_vars_with (fun x : subst_type => dom x) in
+  let K := gather_vars_with (fun x : subst_type => fold_vars fv_tt x) in
+  let L := gather_vars_with (fun x : subst_term => dom x) in
+  let M := gather_vars_with (fun x : subst_term => fold_vars fv_te x) in
+  let N := gather_vars_with (fun x : subst_term =>
+                               fold_vars (fv_ee source) x) in
+  let O := gather_vars_with (fun x : subst_term =>
+                               fold_vars (fv_ee target) x) in
+  constr:(A \u B \u C \u D \u E \u F \u G \u H \u
+          I \u J \u K \u L \u M \u N \u O).
 
 (** "pick_fresh x" tactic create a fresh variable with name x *)
 

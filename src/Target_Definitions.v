@@ -187,8 +187,9 @@ Inductive t_context_typing (* |- C : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
     env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
   | t_context_typing_hole : forall b D_hole G_hole t_hole D G,
       wfenv (t_wft D_hole) G_hole -> wfenv (t_wft (D_hole & D)) (G_hole & G) ->
-      t_wft D t_hole ->
-      t_context_typing b t_ctx_hole D_hole G_hole t_hole D G t_hole
+      t_wft D_hole t_hole -> ok (D_hole & D) ->
+      t_context_typing b t_ctx_hole D_hole G_hole t_hole
+                                    (D_hole & D) (G_hole & G) t_hole
   | t_context_typing_if : forall b Cv D_hole G_hole t_hole D G m1 m2 t,
       t_value_context_typing b Cv D_hole G_hole t_hole D G t_typ_bool ->
       t_typing D G m1 t -> t_typing D G m2 t ->
@@ -244,8 +245,9 @@ with t_value_context_typing (* |- Cv : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
     env_type -> env_term -> typ -> env_type -> env_term -> typ -> Prop :=
   | t_value_context_typing_hole : forall D_hole G_hole t_hole D G,
       wfenv (t_wft D_hole) G_hole -> wfenv (t_wft (D_hole & D)) (G_hole & G) ->
-      t_wft D t_hole ->
-      t_value_context_typing true t_ctx_hole D_hole G_hole t_hole D G t_hole
+      t_wft D_hole t_hole -> ok (D_hole & D) ->
+      t_value_context_typing true t_ctx_hole D_hole G_hole t_hole
+                                             (D_hole & D) (G_hole & G) t_hole
   | t_value_context_typing_pair_left
     : forall b Cv D_hole G_hole t_hole D G u t1 t2,
       t_value_context_typing b Cv D_hole G_hole t_hole D G t1 ->
@@ -259,6 +261,7 @@ with t_value_context_typing (* |- Cv : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
       t_value_context_typing b (t_ctx_pair_right u Cv) D_hole G_hole t_hole
                                                        D G (t_typ_pair t1 t2)
   | t_value_context_typing_abs : forall b L C D_hole G_hole t_hole D G t1 t2,
+      wfenv (t_wft D) G ->
       (forall x X, x \notin L -> X \notin L ->
         t_context_typing b (ctx_open_te_var (t_ctx_open_ee_var C x) X)
                        D_hole G_hole t_hole
@@ -268,7 +271,7 @@ with t_value_context_typing (* |- Cv : ( D ; G |- t ) ~> ( D' ; G' |- t' ) *)
                                                 D G (t_typ_arrow t1 t2).
 
 Scheme t_context_typing_mut := Induction for t_context_typing Sort Prop
-with t_value_context__typingmut
+with t_value_context_typing_mut
   := Induction for t_value_context_typing Sort Prop.
 
 Hint Constructors t_context_typing t_value_context_typing.

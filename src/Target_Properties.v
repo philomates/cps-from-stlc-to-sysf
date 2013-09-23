@@ -299,22 +299,68 @@ Lemma plug_t_term_open_ee_rec : forall C m i m', t_term m ->
 
 Theorem t_context_typing_implies_ok_hole : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> ok Dh.
+Proof.
+  apply (t_context_typing_mut (fun b C Dh Gh th D G t pf => ok Dh)
+                              (fun b C Dh Gh th D G t pf => ok Dh));
+  intros; eauto;
+  pick_fresh x; pick_fresh X; try apply* (H x X); apply* (H x).
+Qed.
 
 Theorem t_context_typing_implies_wfenv_hole : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> wfenv (t_wft Dh) Gh.
+Proof.
+  apply (t_context_typing_mut
+          (fun b C Dh Gh th D G t pf => wfenv (t_wft Dh) Gh)
+          (fun b C Dh Gh th D G t pf => wfenv (t_wft Dh) Gh)); intros; eauto;
+  pick_fresh x; pick_fresh X; try apply* (H x X); apply* (H x).
+Qed.
 
 Theorem t_context_typing_implies_t_wft_hole : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> t_wft Dh th.
+  apply (t_context_typing_mut (fun b C Dh Gh th D G t pf => t_wft Dh th)
+                              (fun b C Dh Gh th D G t pf => t_wft Dh th));
+  intros; eauto;
+  pick_fresh x; pick_fresh X; try apply* (H x X); apply* (H x).
+Qed.
 
 Theorem t_context_typing_implies_ok : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> ok D.
+Proof.
+  apply (t_context_typing_mut (fun b C Dh Gh th D G t pf => ok D)
+                              (fun b C Dh Gh th D G t pf => ok D));
+  intros; eauto; pick_fresh x; pick_fresh X; try apply* (H x).
+  eapply ok_push_inv_ok. apply* (H x X).
+Qed.
 
 Theorem t_context_typing_implies_wfenv : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> wfenv (t_wft D) G.
-Admitted.
+Proof.
+  apply (t_context_typing_mut
+          (fun b C Dh Gh th D G t pf => wfenv (t_wft D) G)
+          (fun b C Dh Gh th D G t pf => wfenv (t_wft D) G)); intros; eauto;
+  pick_fresh x; eapply wfenv_push_inv_wfenv; apply* (H x).
+Qed.
 
 Theorem t_context_typing_implies_t_wft : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> t_wft D t.
+Proof.
+  apply (t_context_typing_mut (fun b C Dh Gh th D G t pf => t_wft D t)
+                              (fun b C Dh Gh th D G t pf => t_wft D t));
+  intros; eauto using t_typing_implies_t_wft;
+  try apply* t_wft_weaken;
+  try (pick_fresh x; apply* (H x)).
+  pick_fresh x. eauto using t_typing_implies_t_wft, (t3 x).
+  pick_fresh x. eauto using t_typing_implies_t_wft, (t3 x).
+  inverts H. pick_fresh X. rewrite* (subst_tt_intro X).
+    apply* subst_tt_preserves_t_wft.
+  apply t_value_typing_implies_t_wft in t0. inverts t0.
+    pick_fresh X. rewrite* (subst_tt_intro X).
+    apply* subst_tt_preserves_t_wft.
+  pick_fresh x. apply_fresh t_wft_arrow as X.
+    eapply wfenv_binds. eapply t_context_typing_implies_wfenv.
+      apply* (t x X). auto.
+    apply* (H x X).
+Qed.
 
 Theorem t_context_typing_implies_t_context : forall b C Dh Gh th D G t,
   t_context_typing b C Dh Gh th D G t -> t_context b C.
