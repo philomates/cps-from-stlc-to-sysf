@@ -47,8 +47,8 @@ Qed.
 (* Basic properties of subst_tt and open_tt *)
 
 Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
-  (open_tt_rec j t' t) = open_tt_rec i t'' (open_tt_rec j t' t) ->
-  t = open_tt_rec i t'' t.
+  open_tt_rec i t'' (open_tt_rec j t' t) = open_tt_rec j t' t ->
+  open_tt_rec i t'' t = t.
 Proof.
   induction t; intros; simpl in *; inversion H0; f_equal*.
   case_if*. apply EqNat.beq_nat_true in H1. subst.
@@ -57,11 +57,17 @@ Proof.
 Qed.
 
 Lemma open_tt_rec_t_type : forall t t' n, t_type t ->
-  t = open_tt_rec n t' t.
+  open_tt_rec n t' t = t.
 Proof.
   intros; gen t' n; induction H; intros; simpl in *; f_equal; auto;
   subst; pick_fresh X;
   apply open_tt_rec_t_type_core with (j := 0) (t' := t_typ_fvar X); auto.
+Qed.
+
+Lemma open_tt_rec_t_almost_type : forall t t' t'' i,
+  t_type (open_tt t t') -> open_tt_rec (S i) t'' t = t.
+Proof.
+  intros. apply* (open_tt_rec_t_type_core t 0 t'). apply* open_tt_rec_t_type.
 Qed.
 
 Lemma subst_tt_open_tt_rec : forall t t' n d, wfenv t_type d ->
@@ -70,7 +76,7 @@ Lemma subst_tt_open_tt_rec : forall t t' n d, wfenv t_type d ->
 Proof.
   induction t; intros; auto; simpl; try f_equal; auto. 
   case_if*. cases* (get v d).
-  apply* open_tt_rec_t_type. apply* (wfenv_binds t_type d v).
+  rewrite* open_tt_rec_t_type. apply* (wfenv_binds t_type d v).
 Qed.
 
 Lemma subst_tt_open_tt : forall t t' d, wfenv t_type d ->
@@ -341,41 +347,26 @@ Proof.
   apply* t_value_typing_weaken_generalized. rewrite* concat_empty_r.
 Qed.
 
-(* basic properties of subst_ee and open_ee, subst_te and open_te *)
+(* basic properties of subst_ee and open_ee *)
 
-Lemma open_te_rec_open_ee_rec_commute : forall m j t i m',
-  (forall j', open_te_rec j' t m' = m') ->
-  open_te_rec j t (open_ee_rec target i m' m) =
-  open_ee_rec target i m' (open_te_rec j t m).
-Proof.
-  induction m; intros; simpl; f_equal; auto. case_if*.
-Qed.
-
-Lemma open_ee_rec_open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
-  (open_ee_rec target j m' m) =
-    open_ee_rec target i m'' (open_ee_rec target j m' m) ->
+Lemma open_ee_rec_t_term_core_1 : forall m j m' i m'', i <> j ->
+  open_ee_rec target i m'' (open_ee_rec target j m' m) =
+  open_ee_rec target j m' m ->
   open_ee_rec target i m'' m = m.
 Proof.
-  induction m; intros; simpl in *; inversion H0; f_equal*.
-  case_if*. apply EqNat.beq_nat_true in H1. subst.
-  case_if*. apply EqNat.beq_nat_true in H1. false.
-  simpl in *. case_if*. apply EqNat.beq_nat_false in H3. false.
+  induction m; intros; simpl in *; inverts H0; f_equal*.
+  case_if*. case_if*; simpl in *; try case_if*.
+  apply EqNat.beq_nat_true in H0. apply EqNat.beq_nat_true in H1. intuition.
 Qed.
 
-Lemma open_ee_rec_open_te_rec_t_term_core : forall m j m' t i,
-  (open_ee_rec target j m' m) =
-    open_te_rec i t (open_ee_rec target j m' m) ->
-  open_te_rec i t m = m.
-Proof.
-  induction m; intros; simpl in *; inversion H; f_equal*; f_equal*.
-Qed.
-
-Lemma open_te_rec_open_ee_rec_t_term_core : forall m j t i m',
-  (open_te_rec j t m) =
-    open_ee_rec target i m' (open_te_rec j t m) ->
+Lemma open_ee_rec_t_term_core_2 : forall m i m' j t k m'', i <> k ->
+  open_ee_rec target i m' (open_te_rec j t (open_ee_rec target k m'' m)) =
+                           open_te_rec j t (open_ee_rec target k m'' m) ->
   open_ee_rec target i m' m = m.
 Proof.
-  induction m; intros; simpl in *; inversion H; f_equal*; f_equal*.
+  induction m; intros; simpl in *; inverts H0; f_equal*.
+  case_if*. case_if*; simpl in *; try case_if*.
+  apply EqNat.beq_nat_true in H0. apply EqNat.beq_nat_true in H1. intuition.
 Qed.
 
 Lemma open_ee_rec_t_term : forall m m' i,
@@ -384,22 +375,35 @@ Proof.
   intros. gen m' i.
   eapply (t_term_mut (fun m pf => forall m' i, open_ee_rec target i m' m = m)
                      (fun m pf => forall m' i, open_ee_rec target i m' m = m));
-  intros; simpl in *; f_equal; auto.
-Admitted.
+  intros; simpl in *; f_equal; auto;
+  pick_fresh x; try (apply* (open_ee_rec_t_term_core_1 m0 0); apply* (H1 x)).
+  pick_fresh X. eapply open_ee_rec_t_term_core_2; try apply* (H0 x X). auto.
+Qed.
 
 Lemma plug_t_term_open_ee_rec : forall C m i m', t_term m ->
   open_ee_rec target i m' (plug C m) = plug (ctx_open_ee_rec target i m' C) m.
-Admitted.
+Proof.
+  induction C; intros; simpl; f_equal; auto using open_ee_rec_t_term.
+Qed.
 
 (* basic properties of subst_te and open_te *)
 
-Lemma open_te_rec_t_term_core : forall m j t t' i, i <> j ->
-  (open_te_rec j t m) = open_te_rec i t' (open_te_rec j t m) ->
-  open_te_rec i t' m = m.
+Lemma open_te_rec_t_term_core_1 : forall m j m' i t,
+  open_te_rec i t (open_ee_rec target j m' m) = open_ee_rec target j m' m ->
+  open_te_rec i t m = m.
 Proof.
-  induction m; intros; simpl in *; inverts H0; f_equal*;
-  try apply open_tt_rec_t_type_core in H2;
-  try apply open_tt_rec_t_type_core in H3; auto.
+  induction m; intros; simpl in *; inverts H; f_equal*.
+  rewrite* H1. rewrite* H2.
+Qed.
+
+Lemma open_te_rec_t_term_core_2 : forall m i t j t' k m', i <> j ->
+  open_te_rec i t (open_te_rec j t' (open_ee_rec target k m' m)) =
+                   open_te_rec j t' (open_ee_rec target k m' m) ->
+  open_te_rec i t m = m.
+Proof.
+  induction m; intros; simpl in *; inverts H0; f_equal*.
+  apply* (open_tt_rec_t_type_core t (S j)).
+  apply* (open_tt_rec_t_type_core t j).
 Qed.
 
 Lemma open_te_rec_t_term : forall m t i,
@@ -408,26 +412,18 @@ Proof.
   intros. gen t i.
   apply (t_term_mut (fun m pf => forall t i, open_te_rec i t m = m)
                     (fun m pf => forall t i, open_te_rec i t m = m));
-  intros; simpl in *; f_equal; auto.
-  pick_fresh x. 
-(*  rewrite open_te_rec_open_ee_rec_commute in H1.
-  symmetry. apply* open_tt_rec_t_type.
-  pick_fresh X. symmetry.
-  apply open_tt_rec_t_type_core with (j := 0) (t' := t_typ_fvar X). auto.
+  intros; simpl in *; f_equal; auto;
+  pick_fresh x; try (apply* open_te_rec_t_term_core_1; apply* (H1 x)).
   apply* open_tt_rec_t_type.
-  pick_fresh x. pick_fresh X.
-  replace m0 with (t_open_ee_var m0 x). (* holds by open_ee_rec_t_term *)
-  apply open_te_rec_t_term_core with (j := 0) (t := t_typ_fvar X). auto.
-  symmetry. apply* (H0 x X).
-*)
-Admitted.
+  pick_fresh X. eapply open_tt_rec_t_almost_type. apply* (t0 X).
+  pick_fresh X. eapply open_te_rec_t_term_core_2; try apply* (H0 x X). auto.
+Qed.
 
 Lemma plug_t_term_open_te_rec : forall C m i t, t_term m ->
   open_te_rec i t (plug C m) = plug (ctx_open_te_rec i t C) m.
 Proof.
-(*  induction C; intros; simpl; f_equal; auto using open_te_rec_t_term.
-Qed.  *)
-Admitted.
+  induction C; intros; simpl; f_equal; auto using open_te_rec_t_term.
+Qed.
 
 (* regularity of t_context_typing *)
 
