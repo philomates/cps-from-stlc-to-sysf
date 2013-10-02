@@ -102,8 +102,7 @@ Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) : trm :=
                                   (open_te_rec K t' e3)
   | s_trm_app e1 e2   => s_trm_app (open_te_rec K t' e1)
                                    (open_te_rec K t' e2)
-  | s_trm_st m t      => s_trm_st (open_te_rec K t' m)
-                                  (open_tt_rec K t' t)
+  | s_trm_st m s      => s_trm_st (open_te_rec K t' m) s
   (* target terms *)
   | t_trm_bvar i      => t_trm_bvar i
   | t_trm_fvar x      => t_trm_fvar x

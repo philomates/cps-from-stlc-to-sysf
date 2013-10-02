@@ -242,11 +242,36 @@ Proof.
   intros. apply_ih_bind* H0.
 Qed.
 
+Lemma t_value_typing_weaken_delta_generalized : forall D D' D'' G u t,
+  t_value_typing (D & D'') G u t -> ok (D & D' & D'') ->
+  t_value_typing (D & D' & D'') G u t.
+Proof.
+  intros. gen_eq DD : (D & D''). gen D D' D''.
+  apply (t_value_typing_mut
+          (fun DD G m t pf =>
+            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
+            t_typing (D & D' & D'') G m t)
+          (fun DD G u t pf =>
+            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
+            t_value_typing (D & D' & D'') G u t));
+  intros; subst; auto using t_wft_weaken_generalized;
+  try (pick_fresh x; apply_fresh t_value_typing_abs as X);
+  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 & D''))).
+  intros. apply_ih_bind* H0.
+Qed.
+
 Lemma t_typing_weaken_delta : forall D D' G m t,
   t_typing D G m t -> ok (D & D') -> t_typing (D & D') G m t.
 Proof.
   intros. rewrite <- (concat_empty_r (D & D')) in *.
   apply* t_typing_weaken_delta_generalized. rewrite* concat_empty_r.
+Qed.
+
+Lemma t_value_typing_weaken_delta : forall D D' G u t,
+  t_value_typing D G u t -> ok (D & D') -> t_value_typing (D & D') G u t.
+Proof.
+  intros. rewrite <- (concat_empty_r (D & D')) in *.
+  apply* t_value_typing_weaken_delta_generalized. rewrite* concat_empty_r.
 Qed.
 
 Lemma t_typing_weaken_generalized : forall D G G' G'' m t,
@@ -275,6 +300,32 @@ Proof.
     eapply wfenv_push_inv. eapply t_typing_implies_wfenv. apply* (t0 x X).
 Qed.
 
+Lemma t_value_typing_weaken_generalized : forall D G G' G'' u t,
+  t_value_typing D (G & G'') u t -> wfenv (t_wft D) (G & G' & G'') ->
+  t_value_typing D (G & G' & G'') u t.
+Proof.
+  intros. gen_eq GG : (G & G''). gen G G' G''.
+  apply (t_value_typing_mut
+          (fun D GG m t pf =>
+            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
+            t_typing D (G & G' & G'') m t)
+          (fun D GG u t pf =>
+            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
+            t_value_typing D (G & G' & G'') u t));
+  intros; subst; eauto.
+  apply_fresh* t_typing_let_fst as x. apply_ih_bind* H1.
+    apply wfenv_push; auto.
+    apply t_value_typing_implies_t_wft in t3. inverts* t3.
+  apply_fresh* t_typing_let_snd as x. apply_ih_bind* H1.
+    apply wfenv_push; auto.
+    apply t_value_typing_implies_t_wft in t3. inverts* t3.
+  apply* t_value_typing_var. apply* binds_weaken. eapply wfenv_ok. eauto.
+  apply_fresh* t_value_typing_abs as X. intros. apply_ih_bind* H0.
+    apply wfenv_push; auto.
+    apply* (wfenv_implies (t_wft D0)). eauto using t_wft_weaken.
+    eapply wfenv_push_inv. eapply t_typing_implies_wfenv. apply* (t0 x X).
+Qed.
+
 Lemma t_typing_weaken : forall D G G' m t,
   t_typing D G m t -> wfenv (t_wft D) (G & G') -> t_typing D (G & G') m t.
 Proof.
@@ -282,24 +333,100 @@ Proof.
   apply* t_typing_weaken_generalized. rewrite* concat_empty_r.
 Qed.
 
-(* basic properties of subst_te and open_te *)
+Lemma t_value_typing_weaken : forall D G G' u t,
+  t_value_typing D G u t -> wfenv (t_wft D) (G & G') ->
+  t_value_typing D (G & G') u t.
+Proof.
+  intros. rewrite <- (concat_empty_r (G & G')) in *.
+  apply* t_value_typing_weaken_generalized. rewrite* concat_empty_r.
+Qed.
 
-Lemma plug_t_term_open_te_rec : forall C m i t, t_term m ->
-  open_te_rec i t (plug C m) = plug (ctx_open_te_rec i t C) m.
-Admitted.
+(* basic properties of subst_ee and open_ee, subst_te and open_te *)
 
-(* basic properties of subst_ee and open_ee *)
+Lemma open_te_rec_open_ee_rec_commute : forall m j t i m',
+  (forall j', open_te_rec j' t m' = m') ->
+  open_te_rec j t (open_ee_rec target i m' m) =
+  open_ee_rec target i m' (open_te_rec j t m).
+Proof.
+  induction m; intros; simpl; f_equal; auto. case_if*.
+Qed.
 
-Lemma open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
+Lemma open_ee_rec_open_ee_rec_t_term_core : forall m j m' m'' i, i <> j ->
   (open_ee_rec target j m' m) =
     open_ee_rec target i m'' (open_ee_rec target j m' m) ->
-  m = open_ee_rec target i m'' m.
+  open_ee_rec target i m'' m = m.
+Proof.
+  induction m; intros; simpl in *; inversion H0; f_equal*.
+  case_if*. apply EqNat.beq_nat_true in H1. subst.
+  case_if*. apply EqNat.beq_nat_true in H1. false.
+  simpl in *. case_if*. apply EqNat.beq_nat_false in H3. false.
+Qed.
+
+Lemma open_ee_rec_open_te_rec_t_term_core : forall m j m' t i,
+  (open_ee_rec target j m' m) =
+    open_te_rec i t (open_ee_rec target j m' m) ->
+  open_te_rec i t m = m.
+Proof.
+  induction m; intros; simpl in *; inversion H; f_equal*; f_equal*.
+Qed.
+
+Lemma open_te_rec_open_ee_rec_t_term_core : forall m j t i m',
+  (open_te_rec j t m) =
+    open_ee_rec target i m' (open_te_rec j t m) ->
+  open_ee_rec target i m' m = m.
+Proof.
+  induction m; intros; simpl in *; inversion H; f_equal*; f_equal*.
+Qed.
 
 Lemma open_ee_rec_t_term : forall m m' i,
   t_term m -> open_ee_rec target i m' m = m.
+Proof.
+  intros. gen m' i.
+  eapply (t_term_mut (fun m pf => forall m' i, open_ee_rec target i m' m = m)
+                     (fun m pf => forall m' i, open_ee_rec target i m' m = m));
+  intros; simpl in *; f_equal; auto.
+Admitted.
 
 Lemma plug_t_term_open_ee_rec : forall C m i m', t_term m ->
   open_ee_rec target i m' (plug C m) = plug (ctx_open_ee_rec target i m' C) m.
+Admitted.
+
+(* basic properties of subst_te and open_te *)
+
+Lemma open_te_rec_t_term_core : forall m j t t' i, i <> j ->
+  (open_te_rec j t m) = open_te_rec i t' (open_te_rec j t m) ->
+  open_te_rec i t' m = m.
+Proof.
+  induction m; intros; simpl in *; inverts H0; f_equal*;
+  try apply open_tt_rec_t_type_core in H2;
+  try apply open_tt_rec_t_type_core in H3; auto.
+Qed.
+
+Lemma open_te_rec_t_term : forall m t i,
+  t_term m -> open_te_rec i t m = m.
+Proof.
+  intros. gen t i.
+  apply (t_term_mut (fun m pf => forall t i, open_te_rec i t m = m)
+                    (fun m pf => forall t i, open_te_rec i t m = m));
+  intros; simpl in *; f_equal; auto.
+  pick_fresh x. 
+(*  rewrite open_te_rec_open_ee_rec_commute in H1.
+  symmetry. apply* open_tt_rec_t_type.
+  pick_fresh X. symmetry.
+  apply open_tt_rec_t_type_core with (j := 0) (t' := t_typ_fvar X). auto.
+  apply* open_tt_rec_t_type.
+  pick_fresh x. pick_fresh X.
+  replace m0 with (t_open_ee_var m0 x). (* holds by open_ee_rec_t_term *)
+  apply open_te_rec_t_term_core with (j := 0) (t := t_typ_fvar X). auto.
+  symmetry. apply* (H0 x X).
+*)
+Admitted.
+
+Lemma plug_t_term_open_te_rec : forall C m i t, t_term m ->
+  open_te_rec i t (plug C m) = plug (ctx_open_te_rec i t C) m.
+Proof.
+(*  induction C; intros; simpl; f_equal; auto using open_te_rec_t_term.
+Qed.  *)
 Admitted.
 
 (* regularity of t_context_typing *)
@@ -427,9 +554,7 @@ Proof.
     case_if*.
   case_if*.
   case_if*.
-  (* TODO: need separate weakening lemmas for t_value_typing *)
-  (* apply* t_value_typing_weaken.
-     apply* t_value_typing_weaken_delta. case_if*. *) skip.
+  apply* t_value_typing_weaken. apply* t_value_typing_weaken_delta.
   pick_fresh x. apply_fresh* t_value_typing_abs as X. intros.
     rewrite* plug_t_term_open_ee_rec; case_if*; rewrite* plug_t_term_open_te_rec.
 Qed.
