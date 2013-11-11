@@ -148,3 +148,51 @@ Proof.
   apply_fresh s_typing_abs as x; auto.
   rewrite plug_s_term_open_ee_rec; eauto using s_typing_implies_s_term.
 Qed.
+
+(* inversion for s_type *)
+
+Lemma s_type_arrow_inv_l : forall s1 s2,
+ s_type (s_typ_arrow s1 s2) -> s_type s1.
+Proof. inversion 1. assumption. Qed.
+
+Lemma s_type_arrow_inv_r : forall s1 s2,
+ s_type (s_typ_arrow s1 s2) -> s_type s2.
+Proof. inversion 1. assumption. Qed.
+
+(* inversion for s_typing *)
+
+Lemma s_typing_var_inv : forall G x s,
+  s_typing G (s_trm_fvar x) s -> binds x s G.
+Proof. inversion 1. assumption. Qed.
+
+Lemma s_typing_abs_inv : forall G e s1 s2,
+  s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2) ->
+  exists L, forall x, x \notin L ->
+  s_typing (G & x ~ s1) (s_open_ee_var e x) s2.
+Proof. inversion 1. exists L. intros. apply* H4. Qed.
+
+Lemma s_typing_if_inv_test : forall G e1 e2 e3 s,
+ s_typing G (s_trm_if e1 e2 e3) s -> s_typing G e1 s_typ_bool.
+Proof. inversion 1. assumption. Qed.
+
+Lemma s_typing_if_inv_true : forall G e1 e2 e3 s,
+ s_typing G (s_trm_if e1 e2 e3) s -> s_typing G e2 s.
+Proof. inversion 1. assumption. Qed.
+
+Lemma s_typing_if_inv_false : forall G e1 e2 e3 s,
+ s_typing G (s_trm_if e1 e2 e3) s -> s_typing G e3 s.
+Proof. inversion 1. assumption. Qed.
+
+Lemma s_typing_app_inv : forall G e1 e2 s,
+  s_typing G (s_trm_app e1 e2) s ->
+  exists s', s_typing G e1 (s_typ_arrow s' s) /\ s_typing G e2 s'.
+Proof. inversion 1. exists s1. auto. Qed.
+
+Lemma s_typing_app_inv_l : forall G e1 e2 s,
+  s_typing G (s_trm_app e1 e2) s ->
+  exists s', s_typing G e1 (s_typ_arrow s' s).
+Proof. inversion 1. exists s1. assumption. Qed.
+
+Lemma s_typing_app_inv_r : forall G e1 e2 s,
+  s_typing G (s_trm_app e1 e2) s -> exists s', s_typing G e2 s'.
+Proof. inversion 1. exists s1. assumption. Qed.
