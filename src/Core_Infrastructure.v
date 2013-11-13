@@ -21,6 +21,7 @@ Fixpoint fv_tt (T : typ) {struct T} : vars :=
   | t_typ_bool        => \{}
   | t_typ_pair t1 t2  => (fv_tt t1) \u (fv_tt t2)
   | t_typ_arrow t1 t2 => (fv_tt t1) \u (fv_tt t2)
+  | typ_bad => \{}
   end.
 
 (** Computing free type variables in a term *)
@@ -48,6 +49,8 @@ Fixpoint fv_te (e : trm) {struct e} : vars :=
 
   | s_trm_st m1 s1 => (fv_te m1)
   | t_trm_ts e1 s1 m2 => (fv_te e1) \u (fv_te m2)
+
+  | trm_bad => \{}
   end.
 
 (** Computing free term variables in a term *)
@@ -75,6 +78,8 @@ Fixpoint fv_ee (l : lang) (e : trm) {struct e} : vars :=
 
   | s_trm_st m1 s1 => (fv_ee l m1)
   | t_trm_ts e1 s1 m2 => (fv_ee l e1) \u (fv_ee l m2)
+
+  | trm_bad => \{}
   end.
 
 

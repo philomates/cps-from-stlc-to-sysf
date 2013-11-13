@@ -37,7 +37,10 @@ Inductive typ : Set :=
   | t_typ_fvar : var -> typ         (* X *)
   | t_typ_bool : typ                (* bool *)
   | t_typ_pair : typ -> typ -> typ  (* t x t *)
-  | t_typ_arrow : typ -> typ -> typ (* forall . t -> t *).
+  | t_typ_arrow : typ -> typ -> typ (* forall . t -> t *)
+
+  (* error case *)
+  | typ_bad : typ.
 
 (*** Syntax of pre-terms ***)
 
@@ -67,7 +70,10 @@ Inductive trm : Set :=
 
   (* Boundary Terms *)
   | s_trm_st : trm -> typ -> trm         (* (s) ST m *)
-  | t_trm_ts : trm -> typ -> trm -> trm  (* let  = TS (s) e in m *).
+  | t_trm_ts : trm -> typ -> trm -> trm  (* let  = TS (s) e in m *)
+
+  (* error case *)
+  | trm_bad.
 
 (*** Substitution for (type and term) bvars ***)
 
@@ -86,6 +92,8 @@ Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) : typ :=
      (* t_typ_arrow is the binding form for type variables *)
   | t_typ_arrow t1 t2 => t_typ_arrow (open_tt_rec (S K) t' t1)
                                      (open_tt_rec (S K) t' t2)
+  (* blah *)
+  | typ_bad => typ_bad
   end.
 
 (** Opening up a type binder occuring in a term *)
@@ -124,6 +132,8 @@ Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) : trm :=
                                    (open_tt_rec K t' t)
                                    (open_te_rec K t' m2)
   | t_trm_ts e s m    => t_trm_ts (open_te_rec K t' e) s (open_te_rec K t' m)
+  (* blah *)
+  | trm_bad => trm_bad
   end.
 
 (** Opening up a term binder appearing in a term *)
@@ -169,6 +179,8 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
   | t_trm_ts e s m    => t_trm_ts (open_ee_rec l k e' e)
                                   s
                                   (open_ee_rec l (inc_if_eq l target k) e' m)
+  (* blah *)
+  | trm_bad => trm_bad
   end.
 
 Notation open_tt := (fun t t' => open_tt_rec 0 t' t). (* t [t' / 0] *)
@@ -209,6 +221,8 @@ Fixpoint subst_tt (d : subst_type) (t : typ) :=
   | t_typ_bool        => t_typ_bool
   | t_typ_pair t1 t2  => t_typ_pair (subst_tt d t1) (subst_tt d t2)
   | t_typ_arrow t1 t2 => t_typ_arrow (subst_tt d t1) (subst_tt d t2)
+  (* blah *)
+  | typ_bad => typ_bad
   end.
 
 (** apply a subst_type in a term *)
@@ -240,6 +254,7 @@ Fixpoint subst_te (d : subst_type) (e : trm) :=
                                      (subst_tt d t)
                                      (subst_te d m2)
     | t_trm_ts e s m    => t_trm_ts (subst_te d e) s (subst_te d m)
+    | trm_bad => trm_bad
   end.
 
 
@@ -281,6 +296,7 @@ Fixpoint subst_ee (l : lang) (g : subst_term) (e : trm) :=
     | t_trm_let_snd u m => t_trm_let_snd (subst_ee l g u) (subst_ee l g m)
     | t_trm_app m1 t m2 => t_trm_app (subst_ee l g m1) t (subst_ee l g m2)
     | t_trm_ts e s m    => t_trm_ts (subst_ee l g e) s (subst_ee l g m)
+    | trm_bad => trm_bad
   end.
 
 Notation s_subst_ee := (subst_ee source).
