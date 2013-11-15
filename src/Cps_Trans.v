@@ -1,6 +1,7 @@
 Require Import LibWfenv Core_Infrastructure
                Source_Definitions Target_Definitions
                Source_Properties Target_Properties.
+Require Import Recdef.
 
 (* for applications where the type argument is irrelevant *)
 Definition dummy_type := t_typ_bool.
@@ -32,8 +33,7 @@ Definition cps_type_trans_computation (s : typ) :=
 
 Notation "( s %)" := (cps_type_trans_computation s) (at level 0).
 
-(* TODO: add induction on the size of e following LN CPS formulation *)
-Fixpoint cps_term_trans (G : env_term)  (e : trm) {struct e}: trm :=
+Function cps_term_trans (G : env_term)  (e : trm) {measure trm_size e}: trm :=
 match e with
 | s_trm_fvar v =>
   let s := get v G in
@@ -66,6 +66,8 @@ match e with
 | s_trm_if e1 e2 e3 => trm_bad
 | _ => trm_bad
 end.
+intros. simpl. rewrite -> (@s_var_trm_size_open (var_gen (fv_ee source bdy)) bdy). auto.
+Defined.
 
 Inductive cps_trans (G:env_term) (e:trm) (s:typ) (m:trm) : Prop :=
   | cps_trans_var : forall G x s, wfenv s_type G ->
@@ -93,4 +95,4 @@ Inductive cps_trans (G:env_term) (e:trm) (s:typ) (m:trm) : Prop :=
                 (t_trm_let_snd (t_trm_bvar 1) (* let k' = snd p in *)
                   (t_trm_app u (*B*)(t_typ_bvar 0) (*k'*)(t_trm_bvar 0))))))).
  (* TODO last line is wrong, need to turn x's in u into bvars *)
- (* TODO app, if *)
+ (* TODO app, if *).
