@@ -82,6 +82,73 @@ Fixpoint fv_ee (l : lang) (e : trm) {struct e} : vars :=
   | trm_bad => \{}
   end.
 
+(************************************************************************)
+
+(** Size of a type *)
+Fixpoint typ_size (t : typ) : nat :=
+  match t with
+  (* source types *)
+  | s_typ_bool        => 1
+  | s_typ_arrow s1 s2   => (typ_size s1) + (typ_size s2)
+  (* target types *)
+  | t_typ_bvar _      => 1
+  | t_typ_fvar _      => 1
+  | t_typ_bool        => 1
+  | t_typ_pair t1 t2  => 1 + (typ_size t1) + (typ_size t2)
+  | t_typ_arrow t1 t2 => 1 + (typ_size t1) + (typ_size t2)
+  (* blah *)
+  | typ_bad => 1
+  end.
+
+(** Size of a term *)
+Fixpoint trm_size (t : trm) : nat :=
+  match t with
+  (* source values *)
+  | s_trm_bvar _ => 1
+  | s_trm_fvar _ => 1
+  | s_trm_true => 1
+  | s_trm_false => 1
+  | s_trm_abs s e => 1 + (typ_size s) + (trm_size e)
+  (* source non-values *)
+  | s_trm_if e1 e2 e3 => 1 + (trm_size e1) + (trm_size e2) + (trm_size e3)
+  | s_trm_app e1 e2 => 1 + (trm_size e1) + (trm_size e2)
+
+  (* target values *)
+  | t_trm_bvar _ => 1
+  | t_trm_fvar _ => 1
+  | t_trm_true  => 1
+  | t_trm_false => 1
+  | t_trm_pair u1 u2 => 1 + (trm_size u1) + (trm_size u2)
+  | t_trm_abs t m => 1 + (typ_size t) + (trm_size m)
+  (* target non-values *)
+  | t_trm_if u m1 m2 => 1 + (trm_size u) + (trm_size m1) + (trm_size m2)
+  | t_trm_let_fst u m => 1 + (trm_size u) + (trm_size m)
+  | t_trm_let_snd u m => 1 + (trm_size u) + (trm_size m)
+  | t_trm_app u1 t u2 => 1 + (trm_size u1) + (typ_size t) + (trm_size u2)
+
+  (* Boundary Terms *)
+  | s_trm_st m s => 1 + (trm_size m) + (typ_size s)
+  | t_trm_ts e s m => 1 + (trm_size e) + (typ_size s) + (trm_size m)
+
+  (* error case *)
+  | trm_bad => 1
+  end.
+
+Lemma s_trm_size_open_var : forall x t,
+  trm_size (s_open_ee_var t x) = trm_size t.
+Proof.
+  intros. generalize 0.
+  induction t; intros; simpl; fequals.
+  case_if*.
+Qed.
+
+Lemma t_trm_size_open_var : forall x t,
+  trm_size (t_open_ee_var t x) = trm_size t.
+Proof.
+  intros. generalize 0.
+  induction t; intros; simpl; fequals.
+  case_if*.
+Qed.
 
 (* ********************************************************************** *)
 (** * Tactics *)

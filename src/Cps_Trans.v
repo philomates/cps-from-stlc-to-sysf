@@ -110,26 +110,25 @@ match e with
 
 | _ => trm_bad
 end.
-(* abs case *)
-intros. simpl. rewrite -> (@s_var_trm_size_open (var_gen (fv_ee source bdy)) bdy). auto.
-(* if case *)
-crush.
-crush.
-crush.
-(* app case *)
-crush. crush.
+(* termination proof *)
+  (* abs case *)
+  intros. simpl. pick_fresh x. rewrite* s_trm_size_open_var. crush.
+  (* if case *)
+  crush. crush. crush.
+  (* app case *)
+  crush. crush.
 Defined.
 
-Inductive cps_trans (G:env_term) (e:trm) (s:typ) (m:trm) : Prop :=
+Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
   | cps_trans_var : forall G x s, wfenv s_type G ->
     cps_trans G (s_trm_fvar x) s
       (t_trm_abs (t_typ_arrow (s+) (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type (t_trm_fvar x)))
-  | cps_trans_true : forall G x s, wfenv s_type G ->
+  | cps_trans_true : forall G s, wfenv s_type G ->
     cps_trans G s_trm_true s
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_true))
-  | cps_trans_false : forall G x s, wfenv s_type G ->
+  | cps_trans_false : forall G s, wfenv s_type G ->
     cps_trans G s_trm_false s
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_false))
@@ -145,4 +144,4 @@ Inductive cps_trans (G:env_term) (e:trm) (s:typ) (m:trm) : Prop :=
               (t_trm_let_fst (t_trm_bvar 0) (* let x = fst p in *)
                 (t_trm_let_snd (t_trm_bvar 1) (* let k' = snd p in *)
                   (t_trm_app u (*B*)(t_typ_bvar 0) (*k'*)(t_trm_bvar 0))))))).
- (* TODO last line is wrong, need to turn x's in u into bvars *).
+ (* TODO last line is wrong, need to turn x's in u into bvars *)

@@ -16,6 +16,7 @@ COQDEP = coqdep
 ## List of files to be compiled and documented.
 
 FILES = \
+	CpdtTactics \
 	LibWfenv \
 	Core_Definitions \
 	Core_Infrastructure \
