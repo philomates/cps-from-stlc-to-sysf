@@ -120,20 +120,20 @@ end.
 Defined.
 
 Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
-  | cps_trans_var : forall G x s, wfenv s_type G ->
+  | cps_trans_var : forall G x s, wfenv s_type G -> binds x s G ->
     cps_trans G (s_trm_fvar x) s
       (t_trm_abs (t_typ_arrow (s+) (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type (t_trm_fvar x)))
-  | cps_trans_true : forall G s, wfenv s_type G ->
-    cps_trans G s_trm_true s
+  | cps_trans_true : forall G, wfenv s_type G ->
+    cps_trans G s_trm_true s_typ_bool
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_true))
-  | cps_trans_false : forall G s, wfenv s_type G ->
-    cps_trans G s_trm_false s
+  | cps_trans_false : forall G, wfenv s_type G ->
+    cps_trans G s_trm_false s_typ_bool
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_false))
   | cps_trans_abs : forall L G e s1 s2 u,
-      (forall x u', x \notin L -> cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 u'
+      (forall x u', x \notin L -> cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 u
         /\ t_close_ee x u' = u) ->
       s_type s1 ->
       cps_trans G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
@@ -146,3 +146,10 @@ Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
                 (t_trm_let_snd (t_trm_bvar 1) (* let k' = snd p in *)
                   (t_trm_app u (*B*)(t_typ_bvar 0) (*k'*)(t_trm_bvar 0))))))).
 
+(* compiler only defined on well-typed source terms *)
+Lemma cps_trans_implies_s_typing : forall G e s u,
+  cps_trans G e s u -> s_typing G e s.
+Proof.
+  induction 1; auto.
+  apply_fresh* s_typing_abs as x. (* wait where is my induction hypothesis? *)
+Admitted.
