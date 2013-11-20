@@ -153,7 +153,7 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
                                   (open_ee_rec l k e' e3)
   | s_trm_app e1 e2   => s_trm_app (open_ee_rec l k e' e1)
                                    (open_ee_rec l k e' e2)
-  | s_trm_st m t      => s_trm_st (open_ee_rec l k e' m) t
+  | s_trm_st m s      => s_trm_st (open_ee_rec l k e' m) s
   (* target terms *)
   | t_trm_bvar i      => if andb (beq_lang l target) (beq_nat k i)
                          then e'

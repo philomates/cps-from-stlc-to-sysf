@@ -84,6 +84,54 @@ Fixpoint fv_ee (l : lang) (e : trm) {struct e} : vars :=
 
 (************************************************************************)
 
+(* turn an fvar into a bvar (inverse of open) *)
+Fixpoint close_ee_rec (l : lang) (x : var) (k : nat) (e : trm) : trm :=
+  match e with
+  (* source terms *)
+  | s_trm_bvar i => s_trm_bvar i
+  | s_trm_fvar y => if andb (beq_lang l source) (LibReflect.decide (x = y))
+                    then s_trm_bvar k else s_trm_fvar y
+  | s_trm_true => s_trm_true
+  | s_trm_false => s_trm_false
+  | s_trm_abs s e => s_trm_abs s (close_ee_rec l x (inc_if_eq l source k) e)
+  | s_trm_if e1 e2 e3 => s_trm_if (close_ee_rec l x k e1)
+                                  (close_ee_rec l x k e2)
+                                  (close_ee_rec l x k e3)
+  | s_trm_app e1 e2 => s_trm_app (close_ee_rec l x k e1)
+                                 (close_ee_rec l x k e2)
+  | s_trm_st m s => s_trm_st (close_ee_rec l x k m) s
+  (* target terms *)
+  | t_trm_bvar i => t_trm_bvar i
+  | t_trm_fvar y => if andb (beq_lang l target) (LibReflect.decide (x = y))
+                    then t_trm_bvar k else t_trm_fvar y
+  | t_trm_true => t_trm_true
+  | t_trm_false => t_trm_false
+  | t_trm_pair u1 u2 => t_trm_pair (close_ee_rec l x k u1)
+                                   (close_ee_rec l x k u2)
+  | t_trm_abs t m => t_trm_abs t (close_ee_rec l x (inc_if_eq l target k) m)
+  | t_trm_if u m1 m2 => t_trm_if (close_ee_rec l x k u)
+                                 (close_ee_rec l x k m1)
+                                 (close_ee_rec l x k m2)
+  | t_trm_let_fst u m => t_trm_let_fst (close_ee_rec l x k u)
+                                       (close_ee_rec l x (inc_if_eq l target k) m)
+  | t_trm_let_snd u m => t_trm_let_snd (close_ee_rec l x k u)
+                                       (close_ee_rec l x (inc_if_eq l target k) m)
+  | t_trm_app m1 t m2 => t_trm_app (close_ee_rec l x k m1)
+                                   t
+                                   (close_ee_rec l x k m2)
+  | t_trm_ts e s m    => t_trm_ts (close_ee_rec l x k e)
+                                  s
+                                  (close_ee_rec l x (inc_if_eq l target k) m)
+  (* blah *)
+  | trm_bad => trm_bad
+  end.
+
+Definition close_ee (l : lang) (x : var) (e : trm) := close_ee_rec l x 0 e.
+Definition s_close_ee := close_ee source.
+Definition t_close_ee := close_ee target.
+
+(************************************************************************)
+
 (** Size of a type *)
 Fixpoint typ_size (t : typ) : nat :=
   match t with
