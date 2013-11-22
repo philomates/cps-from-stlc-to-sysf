@@ -29,6 +29,29 @@ Proof.
   apply_fresh t_type_arrow as Y; rewrite* open_tt_rec_t_type.
 Qed.
 
+Lemma cps_type_trans_preserves_wft : forall s,
+  s_type s -> t_wft empty (s+).
+Proof.
+  induction 1; auto.
+  apply_fresh t_wft_arrow as X; simpl; auto.
+  apply t_wft_pair. rewrite* open_tt_rec_t_type. apply* t_wft_weaken.
+  apply_fresh t_wft_arrow as Y; simpl; auto.
+  repeat rewrite* open_tt_rec_t_type. repeat apply* t_wft_weaken.
+Qed.
+
+Lemma cps_type_trans_preserves_wfenv : forall G,
+  wfenv s_type G -> wfenv (t_wft empty) (map cps_type_trans G).
+Proof.
+  unfold wfenv. crush.
+  assert (exists s, v = (s+)). (* hmm I should have this somehow *)
+ skip.
+  destruct H2 as [s]. subst.
+  apply cps_type_trans_preserves_wft.
+  apply (H1 x).
+  (* need the converse of binds_map *)
+Admitted.
+(* blar need more lemmas about envs *)
+
 Definition cps_type_trans_computation (s : typ) :=
   t_typ_arrow (t_typ_arrow (s+) (t_typ_bvar 1)) (t_typ_bvar 0).
 
@@ -133,8 +156,8 @@ Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_false))
   | cps_trans_abs : forall L G e s1 s2 u,
-      (forall x u', x \notin L -> cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 u
-        /\ t_close_ee x u' = u) ->
+      (forall x, x \notin L ->
+        cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 (t_open_ee_var u x)) ->
       s_type s1 ->
       cps_trans G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
         (t_trm_abs (*A*)
@@ -151,5 +174,44 @@ Lemma cps_trans_implies_s_typing : forall G e s u,
   cps_trans G e s u -> s_typing G e s.
 Proof.
   induction 1; auto.
-  apply_fresh* s_typing_abs as x. (* wait where is my induction hypothesis? *)
-Admitted.
+  apply_fresh* s_typing_abs as x.
+Qed.
+
+(* type-preserving compilation *)
+Lemma cps_trans_implies_t_typing : forall G e s u,
+  cps_trans G e s u -> t_value_typing empty (map cps_type_trans G) u (s%).
+Proof.
+  induction 1.
+  apply_fresh t_value_typing_abs as k. apply* cps_type_trans_preserves_wfenv.
+  intros. simpl. replace (t_typ_fvar X) with (open_tt (t_typ_fvar X) dummy_type).
+  apply* t_typing_app. apply* t_value_typing_var.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
+  apply* cps_type_trans_preserves_wfenv.
+  apply_fresh t_wft_arrow as Y; simpl.
+  repeat rewrite open_tt_rec_t_type;
+  try (repeat apply* t_wft_weaken; apply cps_type_trans_preserves_wft);
+  try (apply cps_type_trans_preserves_well_formed_types);
+  apply* (wfenv_binds s_type).
+  apply* t_wft_var.
+  apply* t_value_typing_var.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
+  apply* cps_type_trans_preserves_wfenv.
+  apply_fresh t_wft_arrow as Y; simpl. repeat rewrite* open_tt_rec_t_type.
+  repeat apply* t_wft_weaken. apply cps_type_trans_preserves_wft.
+  apply* (wfenv_binds s_type).
+  apply* cps_type_trans_preserves_well_formed_types.
+  apply* (wfenv_binds s_type).
+  apply* cps_type_trans_preserves_well_formed_types.
+  apply* (wfenv_binds s_type).
+  apply* cps_type_trans_preserves_well_formed_types.
+  apply* (wfenv_binds s_type).
+  apply* t_wft_var.
+  simpl. repeat rewrite* open_tt_rec_t_type;
+  apply* cps_type_trans_preserves_well_formed_types;
+  apply* (wfenv_binds s_type).
+  auto.
+  (* ok all that was the variable case; still have true, false, abs
+     wait did I not even write the translation for app/if yet?
+     I guess not, oops *)
