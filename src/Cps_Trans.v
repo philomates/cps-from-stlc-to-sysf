@@ -42,15 +42,13 @@ Qed.
 Lemma cps_type_trans_preserves_wfenv : forall G,
   wfenv s_type G -> wfenv (t_wft empty) (map cps_type_trans G).
 Proof.
-  unfold wfenv. crush.
-  assert (exists s, v = (s+)). (* hmm I should have this somehow *)
- skip.
-  destruct H2 as [s]. subst.
-  apply cps_type_trans_preserves_wft.
-  apply (H1 x).
-  (* need the converse of binds_map *)
-Admitted.
-(* blar need more lemmas about envs *)
+  apply wfenv_ind.
+  rewrite map_empty. apply wfenv_empty.
+  intros.
+  rewrite map_push.
+  apply wfenv_push; auto.
+  apply* cps_type_trans_preserves_wft.
+Qed.
 
 Definition cps_type_trans_computation (s : typ) :=
   t_typ_arrow (t_typ_arrow (s+) (t_typ_bvar 1)) (t_typ_bvar 0).
@@ -167,15 +165,32 @@ Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
                        (*p*) (t_typ_pair (s1+) (t_typ_arrow (s2+) (t_typ_bvar 1)))
               (t_trm_let_fst (t_trm_bvar 0) (* let x = fst p in *)
                 (t_trm_let_snd (t_trm_bvar 1) (* let k' = snd p in *)
-                  (t_trm_app u (*B*)(t_typ_bvar 0) (*k'*)(t_trm_bvar 0))))))).
+                  (t_trm_app u (*B*)(t_typ_bvar 0) (*k'*)(t_trm_bvar 0)))))))
+  | cps_trans_if : forall G e1 e2 e3 s u1 u2 u3,
+      cps_trans G e1 s_typ_bool u1 ->
+      cps_trans G e2 s u2 -> cps_trans G e3 s u3 ->
+      cps_trans G (s_trm_if e1 e2 e3) s
+        (t_trm_abs (*A*) (*k*)(t_typ_arrow (s+) (t_typ_bvar 1))
+          (t_trm_app u1 (t_typ_bvar 0)
+            (t_trm_abs (*x*)t_typ_bool
+              (t_trm_if (t_trm_bvar 0)
+                (t_trm_app u2 (t_typ_bvar 1) (t_trm_bvar 1))
+                (t_trm_app u3 (t_typ_bvar 1) (t_trm_bvar 1))))))
+  | cps_trans_app : forall G e1 e2 s1 s2 u1 u2,
+      cps_trans G e1 (s_typ_arrow s1 s2) u1 -> cps_trans G e2 s1 u2 ->
+      cps_trans G (s_trm_app e1 e2) s2
+        (t_trm_abs (*A*) (*k*)(t_typ_arrow (s2+) (t_typ_bvar 1))
+          (t_trm_app u1 (t_typ_bvar 0)
+            (t_trm_abs (*x1*)((s_typ_arrow s1 s2)+)
+              (t_trm_app u2 (t_typ_bvar 1)
+                (t_trm_abs (*x2*)(s1+)
+                  (t_trm_app (t_trm_bvar 1) (t_typ_bvar 2)
+                    (t_trm_pair (t_trm_bvar 0) (t_trm_bvar 2)))))))).
 
 (* compiler only defined on well-typed source terms *)
 Lemma cps_trans_implies_s_typing : forall G e s u,
   cps_trans G e s u -> s_typing G e s.
-Proof.
-  induction 1; auto.
-  apply_fresh* s_typing_abs as x.
-Qed.
+Proof. induction 1; eauto. Qed.
 
 (* type-preserving compilation *)
 Lemma cps_trans_implies_t_typing : forall G e s u,
@@ -212,6 +227,4 @@ Proof.
   apply* cps_type_trans_preserves_well_formed_types;
   apply* (wfenv_binds s_type).
   auto.
-  (* ok all that was the variable case; still have true, false, abs
-     wait did I not even write the translation for app/if yet?
-     I guess not, oops *)
+  (* ok all that was the variable case; still have true, false, abs, if, app *)
