@@ -192,39 +192,71 @@ Lemma cps_trans_implies_s_typing : forall G e s u,
   cps_trans G e s u -> s_typing G e s.
 Proof. induction 1; eauto. Qed.
 
+(* hints for following lemma *)
+Hint Local Constructors t_wft. 
+Hint Local Resolve 
+     cps_type_trans_preserves_wfenv 
+     cps_type_trans_preserves_wft
+     cps_type_trans_preserves_well_formed_types
+     (wfenv_binds s_type).
+
+
 (* type-preserving compilation *)
 Lemma cps_trans_implies_t_typing : forall G e s u,
   cps_trans G e s u -> t_value_typing empty (map cps_type_trans G) u (s%).
-Proof.
+Proof with eauto.
   induction 1.
-  apply_fresh t_value_typing_abs as k. apply* cps_type_trans_preserves_wfenv.
+  (* TODO: refactor var, true, false cases; they're identical except for t_value_typing constructor applied *)
+  (* variable case *)
+  apply_fresh t_value_typing_abs as k...
   intros. simpl. replace (t_typ_fvar X) with (open_tt (t_typ_fvar X) dummy_type).
   apply* t_typing_app. apply* t_value_typing_var.
   apply wfenv_push; auto.
-  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
-  apply* cps_type_trans_preserves_wfenv.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken. 
   apply_fresh t_wft_arrow as Y; simpl.
-  repeat rewrite open_tt_rec_t_type;
-  try (repeat apply* t_wft_weaken; apply cps_type_trans_preserves_wft);
-  try (apply cps_type_trans_preserves_well_formed_types);
-  apply* (wfenv_binds s_type).
+  repeat rewrite open_tt_rec_t_type; try (repeat apply* t_wft_weaken; eauto).
   apply* t_wft_var.
   apply* t_value_typing_var.
   apply wfenv_push; auto.
   apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
-  apply* cps_type_trans_preserves_wfenv.
   apply_fresh t_wft_arrow as Y; simpl. repeat rewrite* open_tt_rec_t_type.
-  repeat apply* t_wft_weaken. apply cps_type_trans_preserves_wft.
-  apply* (wfenv_binds s_type).
-  apply* cps_type_trans_preserves_well_formed_types.
-  apply* (wfenv_binds s_type).
-  apply* cps_type_trans_preserves_well_formed_types.
-  apply* (wfenv_binds s_type).
-  apply* cps_type_trans_preserves_well_formed_types.
-  apply* (wfenv_binds s_type).
+  repeat apply* t_wft_weaken.
   apply* t_wft_var.
-  simpl. repeat rewrite* open_tt_rec_t_type;
-  apply* cps_type_trans_preserves_well_formed_types;
-  apply* (wfenv_binds s_type).
+  simpl. repeat rewrite* open_tt_rec_t_type...
   auto.
-  (* ok all that was the variable case; still have true, false, abs, if, app *)
+  (* true case *)
+  apply_fresh t_value_typing_abs as k...
+  intros. simpl.  replace (t_typ_fvar X) with (open_tt (t_typ_fvar X) dummy_type).
+  apply* t_typing_app. apply* t_value_typing_var.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken. 
+  apply_fresh t_wft_arrow as Y; simpl.
+  repeat rewrite open_tt_rec_t_type; try (repeat apply* t_wft_weaken; eauto).
+  apply* t_wft_var.
+  apply* t_value_typing_true.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
+  apply_fresh t_wft_arrow as Y; simpl. repeat rewrite* open_tt_rec_t_type.
+  repeat apply* t_wft_weaken.
+  apply* t_wft_var.
+  simpl. repeat rewrite* open_tt_rec_t_type...
+  auto.
+  (* false case *)
+  apply_fresh t_value_typing_abs as k...
+  intros. simpl.  replace (t_typ_fvar X) with (open_tt (t_typ_fvar X) dummy_type).
+  apply* t_typing_app. apply* t_value_typing_var.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken. 
+  apply_fresh t_wft_arrow as Y; simpl.
+  repeat rewrite open_tt_rec_t_type; try (repeat apply* t_wft_weaken; eauto).
+  apply* t_wft_var.
+  apply* t_value_typing_false.
+  apply wfenv_push; auto.
+  apply (wfenv_implies (t_wft empty)); auto using t_wft_weaken.
+  apply_fresh t_wft_arrow as Y; simpl. repeat rewrite* open_tt_rec_t_type.
+  repeat apply* t_wft_weaken.
+  apply* t_wft_var.
+  simpl. repeat rewrite* open_tt_rec_t_type...
+  (* abs case *)
+  (* if case *)
+  (* app case *)
