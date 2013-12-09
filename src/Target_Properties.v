@@ -109,6 +109,20 @@ Proof.
   intros. apply* subst_tt_intro_rec.
 Qed.  
 
+Lemma t_open_tt_rec_open_tt_rec : forall t i j t1 t2,
+  i <> j -> t_type t1 -> t_type t2 ->
+  open_tt_rec i t1 (open_tt_rec j t2 t) = open_tt_rec j t2 (open_tt_rec i t1 t).
+Proof.
+  induction t; intros; simpl; auto; try solve [f_equal*].
+  cases_if*.
+    cases_if*.
+      apply EqNat.beq_nat_true in H2. apply EqNat.beq_nat_true in H3. false.
+      simpl. rewrite H2. rewrite* open_tt_rec_t_type.
+    cases_if*.
+      simpl. rewrite H3. rewrite* open_tt_rec_t_type.
+      simpl. rewrite H2. rewrite* H3.
+Qed.
+
 (* XXX: unused *)
 Lemma subst_tt_preserves_t_type : forall d t,
   t_type t -> wfenv t_type d -> t_type (subst_tt d t).
@@ -121,6 +135,7 @@ Proof.
   case_eq (get X d); intros; try apply binds_fresh_inv in H4;
   try contradiction; auto.
 Qed.
+
 
 (* subst_tt preserves t_wft *)
 
@@ -423,6 +438,49 @@ Lemma plug_t_term_open_te_rec : forall C m i t, t_term m ->
   open_te_rec i t (plug C m) = plug (ctx_open_te_rec i t C) m.
 Proof.
   induction C; intros; simpl; f_equal; auto using open_te_rec_t_term.
+Qed.
+
+(* commute open_ee_rec and open_te_rec with themselves and each other *)
+
+Lemma t_open_ee_rec_open_ee_rec : forall m i j m1 m2,
+  i <> j -> t_term m1 -> t_term m2 ->
+  open_ee_rec target i m1 (open_ee_rec target j m2 m) =
+  open_ee_rec target j m2 (open_ee_rec target i m1 m).
+Proof.
+  induction m; intros; simpl; auto; try solve [f_equal*].
+  cases_if*.
+    cases_if*.
+      apply EqNat.beq_nat_true in H2. apply EqNat.beq_nat_true in H3. subst. false.
+      simpl. rewrite H2. rewrite* open_ee_rec_t_term.
+    cases_if*.
+      simpl. rewrite H3. rewrite* open_ee_rec_t_term.
+      simpl. repeat cases_if*.
+Qed.
+
+Lemma t_open_ee_rec_open_te_rec : forall m i j m1 t,
+  t_term m1 ->
+  open_ee_rec target i m1 (open_te_rec j t m) =
+  open_te_rec j t (open_ee_rec target i m1 m).
+Proof.
+  induction m; intros; simpl; auto; f_equal*.
+  cases_if*. rewrite* open_te_rec_t_term.
+Qed.
+
+(* same lemma but in reverse for convenience *)
+Lemma t_open_te_rec_open_ee_rec : forall m i j m1 t,
+  t_term m1 ->
+  open_te_rec j t (open_ee_rec target i m1 m) =
+  open_ee_rec target i m1 (open_te_rec j t m).
+Proof.
+  induction m; intros; simpl; auto; f_equal*.
+  cases_if*. rewrite* open_te_rec_t_term.
+Qed.
+
+Lemma t_open_te_rec_open_te_rec : forall m i j t1 t2,
+  i <> j -> t_type t1 -> t_type t2 ->
+  open_te_rec i t1 (open_te_rec j t2 m) = open_te_rec j t2 (open_te_rec i t1 m).
+Proof.
+  induction m; intros; simpl; auto; f_equal; auto using t_open_tt_rec_open_tt_rec.
 Qed.
 
 (* regularity of t_context_typing *)
