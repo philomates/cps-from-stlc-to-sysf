@@ -183,6 +183,10 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
   | trm_bad => trm_bad
   end.
 
+Notation "< t { t' / K }>" := (open_tt_rec K t' t).
+Notation "< e { t / K }>" := (open_te_rec K t e).
+Notation "< e [ e' / k ]>" := (open_ee_rec target k e' e).
+
 Notation open_tt := (fun t t' => open_tt_rec 0 t' t). (* t [t' / 0] *)
 Notation open_te := (fun e t' => open_te_rec 0 t' e). (* e [t' / 0] *)
 Notation s_open_ee := (fun e e' => open_ee_rec source 0 e' e). (* e [e' / 0] *)
