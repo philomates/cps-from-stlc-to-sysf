@@ -215,7 +215,6 @@ Ltac prove_t_wft :=
   match goal with
     | [ |- t_wft _ (t_typ_arrow _ _)] => simplify_t_wft_arrow; prove_t_wft
     | [ |- t_wft _ (t_typ_pair _ _)] => apply* t_wft_pair; prove_t_wft
-    | [ |- t_wft _ (t_typ_fvar _ _)] => apply* t_wft_var
     | [ |- (t_wft _ _)] =>
       apply* t_wft_weaken; repeat apply* ok_push; auto using cps_type_trans_preserves_wft; prove_t_wft end.
 
@@ -293,6 +292,53 @@ Proof.
     prove_t_value_typing.
 
   (* if case *)
+  assert (s_type s). apply* s_typing_implies_s_type.
+  replace (t_typ_fvar X) with (open_tt (t_typ_bvar 0) (t_typ_fvar X)); auto.
+  apply* t_typing_app; simpl.
+    (* u1 *)
+    rewrite* open_ee_rec_t_term. rewrite* open_te_rec_t_term. rewrite* open_tt_rec_t_type.
+    apply* t_value_typing_weaken. apply* t_value_typing_weaken_delta. apply wfenv_push; auto.
+      apply (wfenv_implies (t_wft empty)); auto;
+        apply cps_type_trans_preserves_wfenv; apply* s_typing_implies_wfenv.
+      prove_t_wft.
+    
+    (* if x then u2 else u3 *)
+    unfold inc_if_eq. cases_if*.
+    prove_t_value_typing. apply* t_typing_if; try prove_t_value_typing;
+    replace (t_typ_fvar X) with (open_tt (t_typ_bvar 0) (t_typ_fvar X)); auto;
+    apply* t_typing_app; simpl;
+    try (rewrite* open_te_rec_t_term; rewrite* open_ee_rec_t_term;
+         rewrite* open_te_rec_t_term; rewrite* open_ee_rec_t_term;
+         repeat apply* t_value_typing_weaken; try solve [repeat apply* t_value_typing_weaken_delta];
+         repeat apply wfenv_push; auto; try prove_t_wft; apply (wfenv_implies (t_wft empty)); auto;
+         apply cps_type_trans_preserves_wfenv; apply* s_typing_implies_wfenv);
+    simpl; prove_t_value_typing.
 
   (* app case *)
-Admitted.
+  assert (s_type s1). apply* s_typing_implies_s_type.
+  assert (s_type s2). apply* s_typing_implies_s_type.
+  replace (t_typ_fvar X) with (open_tt (t_typ_bvar 0) (t_typ_fvar X)); auto.
+  apply* t_typing_app; simpl.
+    (* u1 *)
+    rewrite* open_ee_rec_t_term. rewrite* open_te_rec_t_term. rewrite* open_tt_rec_t_type.
+    apply* t_value_typing_weaken. apply* t_value_typing_weaken_delta. apply wfenv_push; auto.
+      apply (wfenv_implies (t_wft empty)); auto;
+        apply cps_type_trans_preserves_wfenv; apply* s_typing_implies_wfenv.
+      prove_t_wft.
+    
+    (* u2 *)
+    unfold inc_if_eq. cases_if*.
+    prove_t_value_typing.
+    replace (t_typ_fvar X) with (open_tt (t_typ_bvar 0) (t_typ_fvar X)); auto.
+    apply* t_typing_app; simpl.
+    rewrite* open_te_rec_t_term; rewrite* open_ee_rec_t_term;
+    rewrite* open_te_rec_t_term; rewrite* open_ee_rec_t_term.
+    repeat apply* t_value_typing_weaken; try solve [repeat apply* t_value_typing_weaken_delta];
+    repeat apply wfenv_push; auto; try prove_t_wft; apply (wfenv_implies (t_wft empty)); auto;
+    apply cps_type_trans_preserves_wfenv; apply* s_typing_implies_wfenv.
+    
+    (* x1 x2 *)
+    simpl. rewrite* open_tt_rec_t_type. prove_t_value_typing.
+    replace (t_typ_fvar X) with (open_tt (t_typ_bvar 0) (t_typ_fvar X)); auto.
+    apply* t_typing_app; simpl. prove_t_value_typing. simpl. apply* t_value_typing_pair; prove_t_value_typing.
+Qed.
