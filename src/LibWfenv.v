@@ -79,6 +79,8 @@ Proof.
   intros. remember (wfenv_push_inv P E x v H) as H'. destruct H'. auto.
 Qed.
 
+Hint Resolve wfenv_push_inv_wfenv.
+
 Lemma wfenv_concat_inv : forall {A : Type} (P : A -> Prop) (E F : env A),
   wfenv P (E & F) -> wfenv P E /\ wfenv P F.
 Proof.

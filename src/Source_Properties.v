@@ -11,24 +11,17 @@ Require Import LibWfenv Source_Definitions Core_Infrastructure.
 
 Theorem s_typing_implies_wfenv : forall G e s,
   s_typing G e s -> wfenv s_type G.
-Proof. 
-  intros G e s P.
-  induction P; auto.
-  pick_fresh x.
-  apply (wfenv_push_inv_wfenv s_type G x s1). 
-  apply* H0.
-Qed. 
+Proof.
+  induction 1; frauto.
+Qed.
 
 Theorem s_typing_implies_s_type : forall G e s,
   s_typing G e s -> s_type s.
 Proof. 
-  induction 1; eauto.
+  induction 1; frauto.
   apply* (wfenv_binds s_type G x s).
-  apply* s_type_arrow.
-  pick_fresh x.
-  apply* (H0 x).
-  inversion* IHs_typing1.
-Qed. 
+  inverts* IHs_typing1.
+Qed.
 
 Theorem s_typing_implies_s_term : forall G e s,
   s_typing G e s -> s_term e.
@@ -47,29 +40,28 @@ Qed.
 Theorem s_context_typing_implies_wfenv_hole : forall C G_hole s_hole G s,
   s_context_typing C G_hole s_hole G s -> wfenv s_type G_hole.
 Proof.
-  induction 1; auto. pick_fresh x. apply* (H0 x).
+  induction 1; frauto.
 Qed.
 
 Theorem s_context_typing_implies_s_type_hole : forall C G_hole s_hole G s,
   s_context_typing C G_hole s_hole G s -> s_type s_hole.
 Proof.
-  induction 1; auto. pick_fresh x. apply* (H0 x).
+  induction 1; frauto.
 Qed.
 
 Theorem s_context_typing_implies_wfenv : forall C G_hole s_hole G s,
   s_context_typing C G_hole s_hole G s -> wfenv s_type G.
 Proof.
-  induction 1; auto.
-  pick_fresh x. apply (wfenv_push_inv_wfenv s_type G x s). apply* H0.
+  induction 1; frauto.
 Qed.
 
 Theorem s_context_typing_implies_s_type : forall C G_hole s_hole G s,
   s_context_typing C G_hole s_hole G s -> s_type s.
 Proof.
   induction 1; eauto using s_typing_implies_s_type.
-  inversion* IHs_context_typing.
-  apply s_typing_implies_s_type in H. inversion* H.
-  apply* s_type_arrow. pick_fresh x. apply* (H0 x).
+  inverts* IHs_context_typing.
+  apply s_typing_implies_s_type in H. inverts* H.
+  frauto.
 Qed.
 
 (* Weakening for s_typing *)
@@ -112,8 +104,7 @@ Proof.
   apply (s_term_mut (fun e WF => forall n, open_ee_rec source n e' e = e)
                     (fun v WF => forall n, open_ee_rec source n e' v = v));
   intros; simpl; f_equal*.
-  pick_fresh x. symmetry.
-  replace (inc_if_eq source source) with S; auto.
+  pick_fresh x. symmetry. unfold inc_if_eq. simpl.
   apply open_ee_rec_s_term_core with (j := 0) (e' := s_trm_fvar x).
   auto. symmetry; auto.
 Qed.

@@ -182,11 +182,19 @@ Fixpoint trm_size (t : trm) : nat :=
   | trm_bad => 1
   end.
 
+Lemma typ_size_open_var : forall X t,
+  typ_size (open_tt_var t X) = typ_size t.
+Proof.
+  intros. generalize 0.
+  induction t; intros; simpl; auto.
+  case_if*.
+Qed.
+
 Lemma s_trm_size_open_var : forall x t,
   trm_size (s_open_ee_var t x) = trm_size t.
 Proof.
   intros. generalize 0.
-  induction t; intros; simpl; fequals.
+  induction t; intros; simpl; auto.
   case_if*.
 Qed.
 
@@ -194,7 +202,7 @@ Lemma t_trm_size_open_var : forall x t,
   trm_size (t_open_ee_var t x) = trm_size t.
 Proof.
   intros. generalize 0.
-  induction t; intros; simpl; fequals.
+  induction t; intros; simpl; auto.
   case_if*.
 Qed.
 
@@ -238,6 +246,15 @@ Tactic Notation "apply_fresh" constr(T) "as" ident(x) :=
 Tactic Notation "apply_fresh" "*" constr(T) "as" ident(x) :=
   apply_fresh T as x; auto*.
 
+(* try to auto a goal with a fresh variable needed *)
+Ltac frauto :=
+  eauto;
+  let x := fresh "x" in
+    pick_fresh x; eauto;
+      try match goal with
+            | [ H : (forall x : var, x \notin ?L -> _) |- _ ]
+              => let Fr := fresh "Fr" in assert (Fr : x \notin L); eauto end.
+
 (** These tactics help applying a lemma which conclusion mentions
   an environment (E & F) in the particular case when F is empty *)
 
@@ -275,4 +292,3 @@ Ltac unsimpl_map_bind :=
 
 Tactic Notation "unsimpl_map_bind" "*" :=
   unsimpl_map_bind; auto*.
-
