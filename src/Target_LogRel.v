@@ -39,7 +39,6 @@ Definition termrel (t1 t2 : typ) (V : atom -> Prop) (a : atom) : Prop :=
 
 Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
   {measure (typ_size t)} : Prop :=
-  interpD D rho /\ t_Wft D t /\
   match t with
     | t_typ_fvar X => exists RR, binds X RR rho /\ (snd RR) a
     | t_typ_bool => a = (t_trm_true, t_trm_true) \/
@@ -79,12 +78,12 @@ Lemma interpV_pair : forall t t' rho a,
     a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
     interpV t rho (v1, v2) /\ interpV t' rho (v1', v2').
 Proof.
-  intros. 
+  intros.
   destruct H as [v1 H]. destruct H as [v1' H].
   destruct H as [v2 H]. destruct H as [v2' H].
   exists v1 v1' v2 v2'. intuition.
   (* H should be exactly what we need but uh *)
-  (* H2 should be exactly what we need but uh *)
+  (* H2 should be exactly what we need for the other goal but uh *)
 
 (* G relation and logical equivalence *)
 
