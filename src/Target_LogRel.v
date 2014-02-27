@@ -2,7 +2,7 @@
  * Prototype of logical relations, just using target language for now *
  **********************************************************************)
 
-Require Import Program Program.Wf.
+Require Import Program.
 Require Import LibWfenv Target_Definitions Core_Infrastructure.
 
 Definition atom : Type := prod trm trm.
@@ -50,8 +50,7 @@ Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
         Atom (subst1_tt rho t) (subst2_tt rho t) a /\
         forall t1 t2 R u1 u2 X,
           Rel t1 t2 R ->
-          interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R))
-          (u1, u2) ->
+          interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
           termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
                   (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
                   (fun a =>
@@ -71,19 +70,31 @@ Next Obligation. splits; intros; inversion 1. Defined.
 Definition interpE (t : typ) (rho : relat_env) : atom -> Prop :=
   termrel (subst1_tt rho t) (subst2_tt rho t) (interpV t rho).
 
-(* why can't I prove this *)
 Lemma interpV_pair : forall t t' rho a,
   interpV (t_typ_pair t t') rho a ->
   exists v1 v1' v2 v2',
     a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
     interpV t rho (v1, v2) /\ interpV t' rho (v1', v2').
 Proof.
-  intros.
-  destruct H as [v1 H]. destruct H as [v1' H].
-  destruct H as [v2 H]. destruct H as [v2' H].
-  exists v1 v1' v2 v2'. intuition.
-  (* H should be exactly what we need but uh *)
-  (* H2 should be exactly what we need for the other goal but uh *)
+  intros. unfold interpV in H. unfold interpV_func in H.
+  rewrite* WfExtensionality.fix_sub_eq_ext in H.
+Qed.
+
+Lemma interpV_arrow : forall t t' rho a,
+  interpV (t_typ_arrow t t') rho a ->
+  Atom (subst1_tt rho (t_typ_arrow t t')) (subst2_tt rho (t_typ_arrow t t')) a /\
+  forall t1 t2 R u1 u2 X,
+    Rel t1 t2 R ->
+    interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
+    termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t' X))
+            (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t' X))
+            (interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)))
+            (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2).
+Proof.
+  intros. unfold interpV in H. unfold interpV_func in H.
+  rewrite* WfExtensionality.fix_sub_eq_ext in H.
+Qed.
+
 
 (* G relation and logical equivalence *)
 
