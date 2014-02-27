@@ -206,6 +206,23 @@ Proof.
   case_if*.
 Qed.
 
+(* empty substitutions don't do anyting *)
+
+Lemma subst_tt_empty : forall t, subst_tt empty t = t.
+Proof.
+  induction t; simpl; fequals; auto. rewrite* get_none.
+Qed.
+
+Lemma subst_te_empty : forall e, subst_te empty e = e.
+Proof.
+  induction e; simpl; fequals; auto using subst_tt_empty.
+Qed.
+
+Lemma subst_ee_empty : forall l e, subst_ee l empty e = e.
+Proof.
+  induction e; simpl; fequals; auto; cases_if*; rewrite* get_none.
+Qed.
+
 (* ********************************************************************** *)
 (** * Tactics *)
 

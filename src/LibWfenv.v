@@ -5,7 +5,13 @@
 
 Require Export LibEnv.
 
-(* First of all, LibEnv provides the predicate 'ok', which
+(* Lemma that LibEnv should really have provided *)
+
+Lemma get_map : forall A B x (v : A) (f : A -> B) (E : env A),
+  get x E = Some v -> get x (map f E) = Some (f v).
+Proof. intros. apply binds_get. apply binds_map. auto. Qed.
+
+(* LibEnv provides the predicate 'ok', which
  * checks basic well-formedness of an env:
  * namely, that there are no duplicate keys *)
 
