@@ -15,9 +15,10 @@ Definition AtomVal (t1 t2 : typ) (a : atom) : Prop :=
   t_value_typing empty empty (snd a) t2.
 
 Definition Rel (t1 t2 : typ) (R : atom -> Prop) : Prop :=
-  (forall a, R a -> (AtomVal t1 t2 a)) /\
-  (forall u1 u2 u2', R (u1, u2) ->
-    ciu_approx empty empty u2 u2' t2 -> R (u1, u2')).
+  (forall a, R a -> (AtomVal t1 t2 a)).
+(* I think equivalence-respecting property is only needed in multi-language relation *)
+(*  /\ (forall u1 u2 u2', R (u1, u2) ->
+        ciu_approx empty empty u2 u2' t2 -> R (u1, u2')). *)
 
 Definition somerel := prod (prod typ typ) (atom -> Prop).
 
@@ -47,7 +48,7 @@ Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
         a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
         interpV t rho (v1, v2) /\ interpV t' rho (v1', v2')
     | t_typ_arrow t' t'' =>
-        Atom (subst1_tt rho t) (subst2_tt rho t) a /\
+        AtomVal (subst1_tt rho t) (subst2_tt rho t) a /\
         forall t1 t2 R u1 u2 X,
           Rel t1 t2 R ->
           interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
@@ -70,19 +71,36 @@ Next Obligation. splits; intros; inversion 1. Defined.
 Definition interpE (t : typ) (rho : relat_env) : atom -> Prop :=
   termrel (subst1_tt rho t) (subst2_tt rho t) (interpV t rho).
 
+Lemma interpV_var : forall X rho a,
+  interpV (t_typ_fvar X) rho a <->
+  exists RR, binds X RR rho /\ (snd RR) a.
+Proof.
+  intuition.
+Qed.
+
+Lemma interpV_bool : forall rho a,
+  interpV t_typ_bool rho a <->
+  a = (t_trm_true, t_trm_true) \/ a = (t_trm_false, t_trm_false).
+Proof.
+  compute; intuition.
+Qed.
+
 Lemma interpV_pair : forall t t' rho a,
-  interpV (t_typ_pair t t') rho a ->
+  interpV (t_typ_pair t t') rho a <->
   exists v1 v1' v2 v2',
     a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
     interpV t rho (v1, v2) /\ interpV t' rho (v1', v2').
 Proof.
+  split.
   intros. unfold interpV in H. unfold interpV_func in H.
   rewrite* WfExtensionality.fix_sub_eq_ext in H.
+  intros. unfold interpV. unfold interpV_func.
+  rewrite* WfExtensionality.fix_sub_eq_ext.
 Qed.
 
 Lemma interpV_arrow : forall t t' rho a,
-  interpV (t_typ_arrow t t') rho a ->
-  Atom (subst1_tt rho (t_typ_arrow t t')) (subst2_tt rho (t_typ_arrow t t')) a /\
+  interpV (t_typ_arrow t t') rho a <->
+  AtomVal (subst1_tt rho (t_typ_arrow t t')) (subst2_tt rho (t_typ_arrow t t')) a /\
   forall t1 t2 R u1 u2 X,
     Rel t1 t2 R ->
     interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
@@ -91,10 +109,12 @@ Lemma interpV_arrow : forall t t' rho a,
             (interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)))
             (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2).
 Proof.
+  split.
   intros. unfold interpV in H. unfold interpV_func in H.
   rewrite* WfExtensionality.fix_sub_eq_ext in H.
+  intros. unfold interpV. unfold interpV_func.
+  rewrite* WfExtensionality.fix_sub_eq_ext.
 Qed.
-
 
 (* G relation and logical equivalence *)
 
@@ -125,66 +145,95 @@ Notation "a \in E[[ t ]] rho" := (interpE t rho a) (at level 0).
 
 (* basic properties *)
 
+Lemma interpV_weaken : forall D t rho X t1 t2 R a,
+  t_wft D t -> rho \in D[[ D ]] -> Rel t1 t2 R -> X \notin dom rho ->
+  (a \in V[[ t ]]rho <-> a \in V[[ t ]](rho & X ~ (t1, t2, R))).
+Proof.
+  intros. gen a.
+  induction H; split; intros.
+  (* var *)
+  apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
+    apply* binds_push_neq. intro. subst. eapply binds_fresh_inv. exact H5. exact H2.
+  apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
+    apply binds_push_inv in H5. intuition.
+    subst. false. unfold interpD in H0. destruct (H0 X H3). destruct H4. destruct H4.
+    destruct H4. eapply binds_fresh_inv. exact H4. exact H2.
 
-(* this is a mess; need to get the definition working right first *)
-Lemma interpV_equivalence_respecting : forall D rho t u1 u2 u2',
- t_wft D t -> rho \in D[[ D ]] ->
- (u1, u2) \in V[[ t ]] rho ->
- ciu_approx empty empty u2 u2' (subst2_tt rho t) -> t_value u2' ->
- (u1, u2') \in V[[ t ]] rho.
+  (* bool *)
+  apply interpV_bool. apply interpV_bool in H3. intuition.
+  apply interpV_bool. apply interpV_bool in H3. intuition.
+
+  (* pair *)
+  apply interpV_pair. apply interpV_pair in H4.
+    destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
+    exists v1 v1' v2 v2'. intuition. apply H6. exact H4. apply H8. exact H7.
+  apply interpV_pair. apply interpV_pair in H4.
+    destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
+    exists v1 v1' v2 v2'. intuition. apply H6. exact H4. apply H8. exact H7.
+
+  (* arrow *)
+  apply interpV_arrow. apply interpV_arrow in H6. intuition.
+    unfold subst1_tt in *. unfold subst2_tt in *. simpl in *. unfold AtomVal in *.
+    destruct a. simpl in *. intuition.
+    (* need a lemma for weakening with subst_tt, something like
+       also, why didn't I define interpD and interpG using relenv?
+       maybe I should rewrite them*)
+  
+
+Lemma interpV_Rel : forall D t rho,
+  t_wft D t -> rho \in D[[ D ]] ->
+  Rel (subst1_tt rho t) (subst2_tt rho t) (V[[ t ]]rho).
 Proof.
   induction 1; intros.
-  (* type variable case: uses inherited property from rho(X) *)
-  compute. compute in H2.
-    unfold interpD in H1. apply (H1 X) in H0.
-    destruct H0 as [t1]. destruct H0 as [t2]. destruct H0 as [R]. destruct H0.
-    exists (t1, t2, R). split*.
-    destruct H2 as [RR]. destruct H2.
-    assert (RR = (t1, t2, R)). erewrite binds_get in H2.
-      inversion H2. reflexivity. auto. subst.
-    unfold Rel in H5. destruct H5. apply* H7.
-    unfold subst2_tt in H3. simpl in *.
-    erewrite get_map in H3; try (erewrite get_map; auto; exact H2). auto.
-  (* bool case: is a mess, needs to be split into some lemmas *)
-  compute. compute in H1. unfold subst2_tt in *. simpl in *.
-    assert (u2 = u2'); subst; auto.
-    destruct H1; inverts H1;
-    unfold ciu_approx in *; simpl in *;
-    destruct H2; destruct H2.
-    assert (t_eval u2' t_trm_true).
-      replace u2'
-        with (plug t_ctx_hole (subst_te empty (t_subst_ee empty u2'))); auto.
-      apply* H4. rewrite <- concat_empty_r with (A := typ) at 2.
-                 rewrite <- concat_empty_r at 2.
-      apply* t_context_typing_hole.
-      apply wfenv_empty.
-      rewrite concat_empty_r with (A := typ). apply wfenv_empty.
-      rewrite concat_empty_r. apply ok_empty.
-      unfold relenv. split. repeat rewrite* dom_empty.
-      intros. apply binds_empty_inv in H7. contradiction.
-      unfold relenv. split. repeat rewrite* dom_empty.
-      intros. apply binds_empty_inv in H7. contradiction.
-      apply* t_eval_red. apply* t_red_refl.
-      simpl. (* TODO: subst_te_empty *) skip.
-    inverts H5. inverts* H6. false. inverts H5.
-    induction H9; inverts H6; simpl in H3; inverts H3.
-    assert (t_eval u2' t_trm_false).
-      replace u2'
-        with (plug t_ctx_hole (subst_te empty (t_subst_ee empty u2'))); auto.
-      apply* H4. rewrite <- concat_empty_r with (A := typ) at 2.
-                 rewrite <- concat_empty_r at 2.
-      apply* t_context_typing_hole.
-      apply wfenv_empty.
-      rewrite concat_empty_r with (A := typ). apply wfenv_empty.
-      rewrite concat_empty_r. apply ok_empty.
-      unfold relenv. split. repeat rewrite* dom_empty.
-      intros. apply binds_empty_inv in H7. contradiction.
-      unfold relenv. split. repeat rewrite* dom_empty.
-      intros. apply binds_empty_inv in H7. contradiction.
-      apply* t_eval_red. apply* t_red_refl.
-      simpl. (* TODO: subst_te_empty *) skip.
-    inverts H5. inverts* H6. false. inverts H5.
-    induction H9; inverts H6; simpl in H3; inverts H3.
-  (* pair case: just induction *)
-(* don't use compute *)
-  (* arrow case *)
+  (* var *)
+  unfold subst1_tt in *; unfold subst2_tt in *; simpl in *.
+  unfold interpD in H1. apply H1 in H0.
+  destruct H0 as [t1]. destruct H0 as [t2]. destruct H0 as [R]. destruct H0.
+  rewrite binds_map with (v := (t1, t2)). simpl.
+  rewrite binds_map with (v := (t1, t2)). simpl.
+  unfold Rel in *. intros. apply H2. apply interpV_var in H3. destruct H3.
+  replace x with (t1, t2, R) in H3. intuition. destruct H3. unfold binds in *.
+  (* why doesn't "rewrite H0 in H3" work? *)
+  assert (Some (t1, t2, R) = Some x). rewrite <- H0. rewrite <- H3. reflexivity.
+  inverts* H5.
+  apply binds_map with (v := (t1, t2, R)). auto.
+  apply binds_map with (v := (t1, t2, R)). auto.
+
+  (* bool *)
+  unfold subst1_tt in *; unfold subst2_tt in *; simpl in *.
+  unfold Rel. intros. apply interpV_bool in H1. unfold AtomVal.
+  intuition; subst; simpl;
+    auto using t_value_typing_true, t_value_typing_false, ok_empty, wfenv_empty.
+
+  (* pair *)
+  unfold subst1_tt in *; unfold subst2_tt in *; simpl in *.
+  unfold Rel in *. intros. apply interpV_pair in H2.
+  destruct H2 as [v1]. destruct H2 as [v1']. destruct H2 as [v2]. destruct H2 as [v2'].
+  intuition. subst. unfold AtomVal in *. destruct (H4 (v1, v2) H2). destruct (H6 (v1', v2') H5).
+  split; apply* t_value_typing_pair.
+
+  (* arrow *)
+  unfold Rel in *. intros. apply interpV_arrow in H4. intuition.
+Qed.
+
+Lemma interpV_substitution : forall D X t t' rho a,
+  t_wft (D & X ~ star) t -> t_wft D t' -> rho \in D[[ D ]] ->
+  (a \in V[[ subst_tt (X ~ t') t ]]rho <->
+   a \in V[[ t ]](rho & (X ~ (subst1_tt rho t', subst2_tt rho t', V[[ t' ]] rho)))).
+Proof.
+  induction 1; split; intros; simpl in *.
+
+  (* var *)
+  case_eq (get X0 (X ~ t')); intros.
+  apply binds_single_inv in H4. destruct H4. subst. rewrite get_single in H3. case_if.
+    apply interpV_var; exists (subst1_tt rho t', subst2_tt rho t', V[[t']](rho)). auto.
+  rewrite H4 in H3. apply interpV_var in H3. destruct H3. apply interpV_var.
+    exists x. intuition. apply* binds_push_neq. intro. rewrite get_single in H4. case_if*.
+
+  case_eq (get X0 (X ~ t')); intros.
+  apply binds_single_inv in H4. destruct H4. subst.
+    apply interpV_var in H3. destruct H3. destruct H3. apply binds_push_eq_inv in H3.
+    subst. simpl in *. auto.
+  
+
+  
