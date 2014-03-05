@@ -19,17 +19,6 @@ Proof. intros. apply binds_get. apply binds_map. auto. Qed.
 Definition wfenv {A: Type} (P : A -> Prop) (E : env A) : Prop :=
   ok E /\ forall x v, binds x v E -> P v.
 
-(* check that two wfenvs have the same set of keys and that
- * the values for those keys are related according to R.
- * example: if G is the type environment and g is a substitution,
-            we want the values in g to have the types in G, that is, we want
-            relenv value g type G (typing empty) *)
-Definition relenv {A B : Type}
-  (P : A -> Prop) (E : env A)
-  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop) : Prop :=
-  dom E = dom F /\
-  forall x a b, wfenv P E -> wfenv Q F -> binds x a E -> binds x b F -> R a b.
-
 Lemma wfenv_ok : forall {A : Type} (P : A -> Prop) (E : env A),
   wfenv P E -> ok E.
 Proof. unfold wfenv. intuition. Qed.
@@ -38,18 +27,108 @@ Lemma wfenv_binds : forall {A : Type} (P : A -> Prop) (E : env A) x v,
   wfenv P E -> binds x v E -> P v.
 Proof. unfold wfenv. intuition. eauto. Qed.
 
+(* check that two wfenvs have the same set of keys and that
+ * the values for those keys are related according to R.
+ * example: if G is the type environment and g is a substitution,
+            we want the values in g to have the types in G, that is, we want
+            relenv value g type G (typing empty) *)
+Definition relenv {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop) : Prop :=
+  dom E = dom F /\ wfenv P E /\ wfenv Q F /\
+  forall x a b, binds x a E -> binds x b F -> R a b.
+
 Lemma relenv_dom : forall {A B : Type}
   (P : A -> Prop) (E : env A)
   (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
   relenv P E Q F R -> dom E = dom F.
 Proof. unfold relenv. intuition. Qed.
 
+Lemma relenv_wfenv_1 : forall {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
+  relenv P E Q F R -> wfenv P E.
+Proof. unfold relenv. intuition. Qed.
+
+Lemma relenv_wfenv_2 : forall {A B : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
+  relenv P E Q F R -> wfenv Q F.
+Proof. unfold relenv. intuition. Qed.
+
 Lemma relenv_rel : forall {A B : Type}
   (P : A -> Prop) (E : env A)
   (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
   relenv P E Q F R ->
-  forall x a b, wfenv P E -> wfenv Q F -> binds x a E -> binds x b F -> R a b.
+  forall x a b, binds x a E -> binds x b F -> R a b.
 Proof. unfold relenv. intuition. Qed.
+
+(* check that three wfenvs have the same set of keys and that
+ * the values for those keys are related according to R. *)
+Definition relenv3 {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop) : Prop :=
+  dom E = dom F /\ dom F = dom G /\ wfenv P E /\ wfenv Q F /\ wfenv R G /\
+  forall x a b c, binds x a E -> binds x b F -> binds x c G -> S a b c.
+
+Lemma relenv3_dom_1_2 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> dom E = dom F.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_dom_2_3 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> dom F = dom G.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_dom_1_3 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> dom E = dom F.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_wfenv_1 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> wfenv P E.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_wfenv_2 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> wfenv Q F.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_wfenv_3 : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S -> wfenv R G.
+Proof. unfold relenv3. intuition. Qed.
+
+Lemma relenv3_rel : forall {A B C : Type}
+  (P : A -> Prop) (E : env A)
+  (Q : B -> Prop) (F : env B)
+  (R : C -> Prop) (G : env C)
+  (S : A -> B -> C -> Prop),
+  relenv3 P E Q F R G S ->
+  forall x a b c, binds x a E -> binds x b F -> binds x c G -> S a b c.
+Proof. unfold relenv3. intuition. Qed.
 
 (* Here we reprove some lemmas from LibEnv about ok as lemmas about wfenv *)
 

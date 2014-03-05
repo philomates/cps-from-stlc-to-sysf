@@ -223,6 +223,65 @@ Proof.
   induction e; simpl; fequals; auto; cases_if*; rewrite* get_none.
 Qed.
 
+(* weakening for substitutions *)
+
+Lemma subst_tt_weaken : forall t X t' d, X \notin fv_tt t ->
+  subst_tt (d & X ~ t') t = subst_tt d t.
+Proof.
+  induction t; simpl; intros; auto; try rewrite* IHt1; try rewrite* IHt2.
+  rewrite get_push. cases_if*. false. auto using in_singleton_self.
+Qed.
+
+Lemma subst_te_weaken : forall e X t d, X \notin fv_te e ->
+  subst_te (d & X ~ t) e = subst_te d e.
+Proof.
+  induction e; simpl; auto; intros; try rewrite* subst_tt_weaken;
+    try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3.
+Qed.
+
+Lemma subst_ee_weaken : forall e x e' g l, x \notin fv_ee l e ->
+  subst_ee l (g & x ~ e') e = subst_ee l g e.
+Proof.
+  induction e; simpl; intros; auto;
+    try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3;
+  cases_if*; rewrite get_push; cases_if*; false; auto using in_singleton_self.
+Qed.
+
+(* fv and open *)
+
+Lemma open_tt_rec_fv_tt : forall t n X,
+  fv_tt (open_tt_rec n (t_typ_fvar X) t) = (fv_tt t \u \{ X }) \/
+  fv_tt (open_tt_rec n (t_typ_fvar X) t) = (fv_tt t).
+Proof.
+  induction t; simpl; auto using subset_union_weak_l; intros.
+  cases_if; simpl; auto. left. rewrite* union_empty_l.
+  destruct (IHt1 n X); destruct (IHt2 n X).
+    left. rewrite <- union_same with (E := \{ X });
+          rewrite <- union_assoc; rewrite union_assoc with (E := fv_tt t2);
+          rewrite union_comm with (E := fv_tt t2 \u \{ X }); rewrite union_assoc.
+          rewrite H. rewrite* H0.
+    left. rewrite H. rewrite H0.
+          rewrite <- union_assoc. rewrite union_comm with (E := \{ X }). apply union_assoc.
+    left. rewrite H. rewrite H0. apply union_assoc.
+    right. rewrite H. rewrite* H0.
+  destruct (IHt1 (S n) X); destruct (IHt2 (S n) X).
+    left. rewrite <- union_same with (E := \{ X });
+          rewrite <- union_assoc; rewrite union_assoc with (E := fv_tt t2);
+          rewrite union_comm with (E := fv_tt t2 \u \{ X }); rewrite union_assoc.
+          rewrite H. rewrite* H0.
+    left. rewrite H. rewrite H0.
+          rewrite <- union_assoc. rewrite union_comm with (E := \{ X }). apply union_assoc.
+    left. rewrite H. rewrite H0. apply union_assoc.
+    right. rewrite H. rewrite* H0.  
+Qed.
+
+Lemma open_tt_var_fv_tt : forall t X,
+  fv_tt (open_tt_var t X) = (fv_tt t \u \{ X }) \/
+  fv_tt (open_tt_var t X) = (fv_tt t).
+Proof.
+  intros. apply* open_tt_rec_fv_tt.
+Qed.
+
 (* ********************************************************************** *)
 (** * Tactics *)
 

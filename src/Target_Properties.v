@@ -44,6 +44,37 @@ Proof.
   intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
 
+(* t_wft and free variables *)
+
+Lemma t_wft_fv_tt : forall t D X,
+  t_wft D t -> X \in fv_tt t -> X \in dom D.
+Proof.
+  intros D t X wft. gen X.
+  induction wft; simpl; intros; auto.
+  rewrite in_singleton in H1. subst. apply* get_some_inv.
+  false. apply* in_empty_elim.
+  rewrite in_union in H. intuition.
+  pick_fresh Y. assert (X \in dom (D & Y ~ star)).
+    rewrite in_union in H3. destruct H3.
+    assert (fv_tt (open_tt_var t1 Y) = fv_tt t1 \u \{Y} \/ fv_tt (open_tt_var t1 Y) = fv_tt t1).
+      apply open_tt_var_fv_tt.
+    apply* H0. destruct H4; rewrite* H4. rewrite in_union. left*.
+    assert (fv_tt (open_tt_var t2 Y) = fv_tt t2 \u \{Y} \/ fv_tt (open_tt_var t2 Y) = fv_tt t2).
+      apply open_tt_var_fv_tt.
+    apply* H2. destruct H4; rewrite* H4. rewrite in_union. left*.
+    rewrite dom_push in H4. rewrite in_union in H4. destruct* H4.
+      false. rewrite in_singleton in H4. subst*.
+      apply Fr. repeat rewrite in_union. left. left. left. right. apply in_singleton_self.
+Qed.
+
+Lemma t_wft_fv_tt_inv : forall t D X,
+  t_wft D t -> X \notin dom D -> X \notin fv_tt t.
+Proof.
+  intros. intro. apply (t_wft_fv_tt t D) in H1; intuition.
+Qed.
+    
+(*    eapply get_some_inv. eapply binds_push_neq_inv with (x2 := Y); eauto. *)
+
 (* Basic properties of subst_tt and open_tt *)
 
 Lemma open_tt_rec_t_type_core : forall t j t' t'' i, i <> j ->
@@ -135,7 +166,6 @@ Proof.
   case_eq (get X d); intros; try apply binds_fresh_inv in H4;
   try contradiction; auto.
 Qed.
-
 
 (* subst_tt preserves t_wft *)
 

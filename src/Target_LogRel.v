@@ -3,7 +3,7 @@
  **********************************************************************)
 
 Require Import Program.
-Require Import LibWfenv Target_Definitions Core_Infrastructure.
+Require Import LibWfenv Core_Infrastructure Target_Definitions Target_Properties.
 
 Definition atom : Type := prod trm trm.
 
@@ -29,8 +29,9 @@ Definition subst1_te (rho : relat_env) := subst_te (map fst (map fst rho)).
 Definition subst2_te (rho : relat_env) := subst_te (map snd (map fst rho)).
 
 Definition interpD (D : env_type) (rho : relat_env) : Prop :=
-  forall X, binds X star D ->
-    exists t1 t2 R, binds X (t1, t2, R) rho /\ Rel t1 t2 R.
+  relenv (fun _ => True) D
+         (fun RR => Rel (fst (fst RR)) (snd (fst RR)) (snd RR)) rho
+         (fun _ _ => True).
 
 (* V and E relations *)
 
@@ -119,9 +120,10 @@ Qed.
 (* G relation and logical equivalence *)
 
 Definition interpG (G : env_term) (rho : relat_env) g1 g2 : Prop :=
-  wfenv (t_wft (map (fun _ => star) rho)) G /\
-  forall x t, binds x t G -> exists u1 u2,
-    binds x u1 g1 /\ binds x u2 g2 /\ interpV t rho (u1, u2).
+  relenv3 (t_wft (map (fun _ => star) rho)) G
+          (fun u => t_value u) g1
+          (fun u => t_value u) g2
+          (fun t u1 u2 => interpV t rho (u1, u2)).
 
 Definition log_approx (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
   t_typing D G m1 t /\ t_typing D G m2 t /\
@@ -146,18 +148,18 @@ Notation "a \in E[[ t ]] rho" := (interpE t rho a) (at level 0).
 (* basic properties *)
 
 Lemma interpV_weaken : forall D t rho X t1 t2 R a,
-  t_wft D t -> rho \in D[[ D ]] -> Rel t1 t2 R -> X \notin dom rho ->
+  t_wft D t -> rho \in D[[ D ]] -> Rel t1 t2 R -> X \notin dom D ->
   (a \in V[[ t ]]rho <-> a \in V[[ t ]](rho & X ~ (t1, t2, R))).
 Proof.
   intros. gen a.
   induction H; split; intros.
   (* var *)
   apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
-    apply* binds_push_neq. intro. subst. eapply binds_fresh_inv. exact H5. exact H2.
+    apply* binds_push_neq. intro. subst. eapply binds_fresh_inv. exact H5.
+    unfold interpD in H0. apply relenv_dom in H0. rewrite H0 in H2. exact H2.
   apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
     apply binds_push_inv in H5. intuition.
-    subst. false. unfold interpD in H0. destruct (H0 X H3). destruct H4. destruct H4.
-    destruct H4. eapply binds_fresh_inv. exact H4. exact H2.
+    subst. false. eapply binds_fresh_inv. exact H3. exact H2.
 
   (* bool *)
   apply interpV_bool. apply interpV_bool in H3. intuition.
@@ -166,19 +168,19 @@ Proof.
   (* pair *)
   apply interpV_pair. apply interpV_pair in H4.
     destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
-    exists v1 v1' v2 v2'. intuition. apply H6. exact H4. apply H8. exact H7.
+    exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
   apply interpV_pair. apply interpV_pair in H4.
     destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
-    exists v1 v1' v2 v2'. intuition. apply H6. exact H4. apply H8. exact H7.
+    exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
 
   (* arrow *)
   apply interpV_arrow. apply interpV_arrow in H6. intuition.
-    unfold subst1_tt in *. unfold subst2_tt in *. simpl in *. unfold AtomVal in *.
-    destruct a. simpl in *. intuition.
-    (* need a lemma for weakening with subst_tt, something like
-       also, why didn't I define interpD and interpG using relenv?
-       maybe I should rewrite them*)
-  
+    unfold subst1_tt in *. unfold subst2_tt in *.
+    repeat rewrite* map_concat. repeat rewrite* map_single. repeat rewrite* subst_tt_weaken.
+    destruct H7. apply t_value_typing_implies_t_wft in H6.
+    apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
+    apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
+
 
 Lemma interpV_Rel : forall D t rho,
   t_wft D t -> rho \in D[[ D ]] ->
