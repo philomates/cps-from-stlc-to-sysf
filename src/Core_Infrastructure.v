@@ -247,6 +247,17 @@ Proof.
   cases_if*; rewrite get_push; cases_if*; false; auto using in_singleton_self.
 Qed.
 
+(* exchange for substitutions *)
+
+Lemma subst_tt_exchange : forall t D1 D2 D3 D4, ok (D1 & D2 & D3 & D4) ->
+  subst_tt (D1 & D2 & D3 & D4) t = subst_tt (D1 & D3 & D2 & D4) t.
+Proof.
+  induction t; simpl; intros; f_equal*.
+  repeat rewrite get_concat.
+  case_eq (get v D1); case_eq (get v D2); case_eq (get v D3); case_eq (get v D4); intros; auto;
+  apply binds_func with (x := v) (E := D1 & D2 & D3 & D4); repeat apply* binds_concat_left_ok.
+Qed.
+
 (* fv and open *)
 
 Lemma open_tt_rec_fv_tt : forall t n X,

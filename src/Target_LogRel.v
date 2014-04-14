@@ -174,13 +174,22 @@ Proof.
     exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
 
   (* arrow *)
-  apply interpV_arrow. apply interpV_arrow in H6. intuition.
-    unfold subst1_tt in *. unfold subst2_tt in *.
+  apply interpV_arrow. apply interpV_arrow in H6. intuition;
+    unfold subst1_tt in *; unfold subst2_tt in *.
     repeat rewrite* map_concat. repeat rewrite* map_single. repeat rewrite* subst_tt_weaken.
     destruct H7. apply t_value_typing_implies_t_wft in H6.
     apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
     apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
-
+    repeat rewrite map_push. simpl.
+    rewrite <- (concat_empty_r (X0 ~ t4)). rewrite <- (concat_empty_r (X0 ~ t5)).
+    repeat rewrite concat_assoc.
+    rewrite subst_tt_exchange with (D2 := X ~ t1). rewrite subst_tt_exchange with (D2 := X ~ t2).
+    repeat rewrite concat_empty_r.
+    rewrite subst_tt_weaken with (t' := t1). rewrite subst_tt_weaken with (t' := t2).
+     (* need to get rid of the middle entry in the extended rho *) skip.
+     apply t_wft_fv_tt_inv with (D := D & X0 ~ star).
+(* ok so I didn't do the cofinite quantification thing in the V relation *)
+ apply* H.
 
 Lemma interpV_Rel : forall D t rho,
   t_wft D t -> rho \in D[[ D ]] ->
