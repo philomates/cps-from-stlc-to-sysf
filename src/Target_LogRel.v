@@ -41,25 +41,28 @@ Definition termrel (t1 t2 : typ) (V : atom -> Prop) (a : atom) : Prop :=
 
 Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
   {measure (typ_size t)} : Prop :=
-  match t with
-    | t_typ_fvar X => exists RR, binds X RR rho /\ (snd RR) a
-    | t_typ_bool => a = (t_trm_true, t_trm_true) \/
-                    a = (t_trm_false, t_trm_false)
-    | t_typ_pair t t' => exists v1 v1' v2 v2',
-        a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
-        interpV t rho (v1, v2) /\ interpV t' rho (v1', v2')
-    | t_typ_arrow t' t'' =>
-        AtomVal (subst1_tt rho t) (subst2_tt rho t) a /\
-        forall t1 t2 R u1 u2 X,
-          Rel t1 t2 R ->
-          interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
-          termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
-                  (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
-                  (fun a =>
-                    interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) a)
-                  (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2)
-    | _ => False
-  end.
+    match t with
+      | t_typ_fvar X => exists RR, binds X RR rho /\ (snd RR) a
+      | t_typ_bool => a = (t_trm_true, t_trm_true) \/
+                      a = (t_trm_false, t_trm_false)
+      | t_typ_pair t t' => exists v1 v1' v2 v2',
+          a = (t_trm_pair v1 v1', t_trm_pair v2 v2') /\
+          interpV t rho (v1, v2) /\ interpV t' rho (v1', v2')
+      | t_typ_arrow t' t'' =>
+          AtomVal (subst1_tt rho t) (subst2_tt rho t) a /\
+          forall t1 t2 R u1 u2,
+            Rel t1 t2 R ->
+            exists L,
+            (forall X, X \notin L -> 
+              interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2)) ->
+            forall X, X \notin L ->
+              termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
+                      (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
+                      (fun a =>
+                        interpV (open_tt_var t'' X) (rho & X ~ (t1, t2, R)) a)
+                      (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2)
+      | _ => False
+    end. 
 Next Obligation. simpl. omega. Defined.
 Next Obligation. simpl. omega. Defined.
 Next Obligation. simpl. rewrite typ_size_open_var. omega. Defined.
@@ -76,7 +79,7 @@ Lemma interpV_var : forall X rho a,
   interpV (t_typ_fvar X) rho a <->
   exists RR, binds X RR rho /\ (snd RR) a.
 Proof.
-  intuition.
+  compute; intuition.
 Qed.
 
 Lemma interpV_bool : forall rho a,
@@ -102,13 +105,14 @@ Qed.
 Lemma interpV_arrow : forall t t' rho a,
   interpV (t_typ_arrow t t') rho a <->
   AtomVal (subst1_tt rho (t_typ_arrow t t')) (subst2_tt rho (t_typ_arrow t t')) a /\
-  forall t1 t2 R u1 u2 X,
+  forall t1 t2 R u1 u2,
     Rel t1 t2 R ->
-    interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
-    termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t' X))
-            (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t' X))
-            (interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)))
-            (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2).
+    exists L,
+    (forall X, X \notin L ->
+      interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2)) ->
+    forall X, X \notin L ->
+      interpE (open_tt_var t' X) (rho & X ~ (t1, t2, R))
+              (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2).
 Proof.
   split.
   intros. unfold interpV in H. unfold interpV_func in H.
@@ -174,22 +178,20 @@ Proof.
     exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
 
   (* arrow *)
-  apply interpV_arrow. apply interpV_arrow in H6. intuition;
-    unfold subst1_tt in *; unfold subst2_tt in *.
-    repeat rewrite* map_concat. repeat rewrite* map_single. repeat rewrite* subst_tt_weaken.
-    destruct H7. apply t_value_typing_implies_t_wft in H6.
+  apply interpV_arrow. apply interpV_arrow in H6.
+    split; unfold subst1_tt in *; unfold subst2_tt in *.
+    repeat rewrite* map_concat. repeat rewrite* map_single. repeat rewrite* subst_tt_weaken;
     apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
-    apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
-    repeat rewrite map_push. simpl.
-    rewrite <- (concat_empty_r (X0 ~ t4)). rewrite <- (concat_empty_r (X0 ~ t5)).
-    repeat rewrite concat_assoc.
-    rewrite subst_tt_exchange with (D2 := X ~ t1). rewrite subst_tt_exchange with (D2 := X ~ t2).
-    repeat rewrite concat_empty_r.
-    rewrite subst_tt_weaken with (t' := t1). rewrite subst_tt_weaken with (t' := t2).
+    destruct H6. intros t1' t2' R' u1 u2 HR'. destruct (H7 t1' t2' R' u1 u2 HR') as [L'].
+    clear H7.
+    intros. exists (L \u L' \u \{X}). intros.
+
+    intros.
      (* need to get rid of the middle entry in the extended rho *) skip.
      apply t_wft_fv_tt_inv with (D := D & X0 ~ star).
-(* ok so I didn't do the cofinite quantification thing in the V relation *)
- apply* H.
+       apply H4.
+
+
 
 Lemma interpV_Rel : forall D t rho,
   t_wft D t -> rho \in D[[ D ]] ->
