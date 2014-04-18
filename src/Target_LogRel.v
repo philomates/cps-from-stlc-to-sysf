@@ -33,6 +33,14 @@ Definition interpD (D : env_type) (rho : relat_env) : Prop :=
          (fun RR => Rel (fst (fst RR)) (snd (fst RR)) (snd RR)) rho
          (fun _ _ => True).
 
+Lemma interpD_ok : forall D rho, interpD D rho ->
+  dom D = dom rho /\ ok D /\ ok rho.
+Proof.
+  unfold interpD. intuition. eapply relenv_dom. exact H.
+  eapply wfenv_ok. eapply relenv_wfenv_1. exact H.
+  eapply wfenv_ok. eapply relenv_wfenv_2. exact H.
+Qed.
+
 (* V and E relations *)
 
 Definition termrel (t1 t2 : typ) (V : atom -> Prop) (a : atom) : Prop :=
@@ -151,45 +159,67 @@ Notation "a \in E[[ t ]] rho" := (interpE t rho a) (at level 0).
 
 (* basic properties *)
 
-Lemma interpV_weaken : forall D t rho X t1 t2 R a,
-  t_wft D t -> rho \in D[[ D ]] -> Rel t1 t2 R -> X \notin dom D ->
-  (a \in V[[ t ]]rho <-> a \in V[[ t ]](rho & X ~ (t1, t2, R))).
+Lemma interpE_weaken_generalized : forall D D' t rho rho' X RR,
+  t_wft (D & D') t -> rho \in D[[ D ]] -> rho' \in D[[ D' ]] ->
+  X \notin dom (D & D') ->
+  (forall a, a \in V[[ t ]](rho & rho') <-> a \in V[[ t ]](rho & X ~ RR & rho')) ->
+  forall a,  a \in E[[ t ]](rho & rho') <-> a \in E[[ t ]](rho & X ~ RR & rho').
 Proof.
-  intros. gen a.
-  induction H; split; intros.
+  unfold interpE. intros. unfold subst1_tt. unfold subst2_tt.
+  repeat rewrite map_concat. repeat rewrite map_single. repeat rewrite subst_tt_weaken;
+  try (intro; apply (t_wft_fv_tt t (D & D')) in H4; auto).
+  unfold termrel. split; split; intuition;
+  destruct (H6 v1 H4) as [v2]; exists v2; intuition; apply* H3.
+Qed.
+
+Lemma interpV_weaken_generalized : forall D D' t rho rho' X t1 t2 R a,
+  t_wft (D & D') t -> rho \in D[[ D ]] -> rho' \in D[[ D' ]] ->
+  Rel t1 t2 R -> ok (rho & X ~ (t1, t2, R) & rho') ->
+  (a \in V[[ t ]](rho & rho') <-> a \in V[[ t ]](rho & X ~ (t1, t2, R) & rho')).
+Proof.
+  intros. remember (D & D') as D0. gen D D' rho rho' X t1 t2 R a.
+  induction H; split; intros; subst.
   (* var *)
-  apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
-    apply* binds_push_neq. intro. subst. eapply binds_fresh_inv. exact H5.
-    unfold interpD in H0. apply relenv_dom in H0. rewrite H0 in H2. exact H2.
-  apply interpV_var. apply interpV_var in H4. destruct H4. exists x. intuition.
-    apply binds_push_inv in H5. intuition.
-    subst. false. eapply binds_fresh_inv. exact H3. exact H2.
+  apply interpV_var. apply interpV_var in H5. destruct H5 as [RR]. exists RR. intuition.
+    apply* binds_weaken.
+      
+  apply interpV_var. apply interpV_var in H5. destruct H5 as [RR]. exists RR. intuition.
+    apply binds_middle_inv in H6. intuition.
+    subst. false. apply ok_middle_inv in H4.
+    apply interpD_ok in H1. apply interpD_ok in H2. intuition.
+    eapply binds_fresh_inv. exact H0. rewrite dom_concat. rewrite notin_union.
+    rewrite H6. rewrite H1. auto.
 
   (* bool *)
-  apply interpV_bool. apply interpV_bool in H3. intuition.
-  apply interpV_bool. apply interpV_bool in H3. intuition.
+  apply interpV_bool. apply interpV_bool in H4. intuition.
+  apply interpV_bool. apply interpV_bool in H4. intuition.
 
   (* pair *)
-  apply interpV_pair. apply interpV_pair in H4.
-    destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
-    exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
-  apply interpV_pair. apply interpV_pair in H4.
-    destruct H4 as [v1]. destruct H4 as [v1']. destruct H4 as [v2]. destruct H4 as [v2'].
-    exists v1 v1' v2 v2'. intuition. apply H9. exact H4. apply H6. exact H7.
+  apply interpV_pair. apply interpV_pair in H5.
+    destruct H5 as [v1]. destruct H5 as [v1']. destruct H5 as [v2]. destruct H5 as [v2'].
+    exists v1 v1' v2 v2'. intuition.
+    apply* (IHt_wft1 D0 D'). apply* (IHt_wft2 D0 D').
+  apply interpV_pair. apply interpV_pair in H5.
+    destruct H5 as [v1]. destruct H5 as [v1']. destruct H5 as [v2]. destruct H5 as [v2'].
+    exists v1 v1' v2 v2'. intuition.
+    apply* (IHt_wft1 D0 D'). apply* (IHt_wft2 D0 D').
 
   (* arrow *)
-  apply interpV_arrow. apply interpV_arrow in H6.
+  apply interpV_arrow. apply interpV_arrow in H7.
     split; unfold subst1_tt in *; unfold subst2_tt in *.
-    repeat rewrite* map_concat. repeat rewrite* map_single. repeat rewrite* subst_tt_weaken;
-    apply t_wft_fv_tt_inv with (D := D); eauto using t_wft_arrow.
-    destruct H6. intros t1' t2' R' u1 u2 HR'. destruct (H7 t1' t2' R' u1 u2 HR') as [L'].
-    clear H7.
-    intros. exists (L \u L' \u \{X}). intros.
+    repeat rewrite map_concat in *. repeat rewrite map_single in *.
+    repeat rewrite subst_tt_weaken; intuition;
+    apply (t_wft_fv_tt_inv (t_typ_arrow t1 t2) (D0 & D')); try apply_fresh* t_wft_arrow as Y.
+    skip. skip. (* TODO fix the ok condition to just be X # D & D' *)
 
-    intros.
-     (* need to get rid of the middle entry in the extended rho *) skip.
-     apply t_wft_fv_tt_inv with (D := D & X0 ~ star).
-       apply H4.
+    intros. destruct H7. destruct (H9 t4 t5 R0 u1 u2 H8) as [L']. exists (L'). intros.
+    rewrite <- concat_assoc. rewrite* <- interpE_weaken_generalized. rewrite concat_assoc.
+    apply* H10. intros. rewrite <- concat_assoc. rewrite H0; auto. rewrite concat_assoc. 
+    apply* H11.
+
+  apply interpV_arrow. apply interpV_arrow in H7.
+    split; unfold subst1_tt in *; unfold subst2_tt in *.
+    repeat rewrite* map_concat in H7. skip.
 
 
 
@@ -247,6 +277,7 @@ Proof.
   apply binds_single_inv in H4. destruct H4. subst.
     apply interpV_var in H3. destruct H3. destruct H3. apply binds_push_eq_inv in H3.
     subst. simpl in *. auto.
+clear H0
   
 
   
