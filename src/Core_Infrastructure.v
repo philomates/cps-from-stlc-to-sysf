@@ -225,26 +225,50 @@ Qed.
 
 (* weakening for substitutions *)
 
-Lemma subst_tt_weaken : forall t X t' d, X \notin fv_tt t ->
+Lemma subst_tt_push : forall t X t' d, X \notin fv_tt t ->
   subst_tt (d & X ~ t') t = subst_tt d t.
 Proof.
   induction t; simpl; intros; auto; try rewrite* IHt1; try rewrite* IHt2.
   rewrite get_push. cases_if*. false. auto using in_singleton_self.
 Qed.
 
-Lemma subst_te_weaken : forall e X t d, X \notin fv_te e ->
+Lemma subst_te_push : forall e X t d, X \notin fv_te e ->
   subst_te (d & X ~ t) e = subst_te d e.
 Proof.
-  induction e; simpl; auto; intros; try rewrite* subst_tt_weaken;
+  induction e; simpl; auto; intros; try rewrite* subst_tt_push;
     try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3.
 Qed.
 
-Lemma subst_ee_weaken : forall e x e' g l, x \notin fv_ee l e ->
+Lemma subst_ee_push : forall e x e' g l, x \notin fv_ee l e ->
   subst_ee l (g & x ~ e') e = subst_ee l g e.
 Proof.
   induction e; simpl; intros; auto;
     try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3;
   cases_if*; rewrite get_push; cases_if*; false; auto using in_singleton_self.
+Qed.
+
+Lemma subst_tt_weaken : forall t X t' d d', X \notin fv_tt t ->
+  subst_tt (d & X ~ t' & d') t = subst_tt (d & d') t.
+Proof.
+  induction t; simpl; intros; auto; try rewrite* IHt1; try rewrite* IHt2.
+  repeat rewrite get_concat. destruct* (get v d').
+  rewrite get_single. cases_if*. false. auto using in_singleton_self.
+Qed.
+
+Lemma subst_te_weaken : forall e X t d d', X \notin fv_te e ->
+  subst_te (d & X ~ t & d') e = subst_te (d & d') e.
+Proof.
+  induction e; simpl; auto; intros; try rewrite* subst_tt_weaken;
+    try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3.
+Qed.
+
+Lemma subst_ee_weaken : forall e x e' g g' l, x \notin fv_ee l e ->
+  subst_ee l (g & x ~ e' & g') e = subst_ee l (g & g') e.
+Proof.
+  induction e; simpl; intros; auto;
+    try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3;
+  cases_if*; repeat rewrite get_concat; destruct* (get v g');
+    rewrite get_single; cases_if*; false; auto using in_singleton_self.
 Qed.
 
 (* exchange for substitutions *)
