@@ -228,3 +228,25 @@ Proof.
 Qed.
 
 (* TODO: lemmas about relenv *)
+
+Lemma relenv_empty : forall {A B : Type} (P : A -> Prop) (Q : B -> Prop) (R : A -> B -> Prop),
+  relenv P empty Q empty R .
+Proof.
+  unfold relenv. intuition; auto using wfenv_empty.
+  repeat rewrite dom_empty. reflexivity.
+  apply binds_empty_inv in H. contradiction.
+Qed.
+
+Lemma relenv_push : forall {A B : Type}
+  (P : A -> Prop) (E : env A) (Q : B -> Prop) (F : env B) (R : A -> B -> Prop)
+  (x : var) (a : A) (b : B),
+  relenv P E Q F R -> x # E -> P a -> Q b -> R a b ->
+  relenv P (E & x ~ a) Q (F & x ~ b) R.
+Proof.
+  unfold relenv. intuition.
+  repeat rewrite dom_concat. repeat rewrite dom_single. rewrite H4. reflexivity.
+  apply wfenv_push; auto.
+  apply wfenv_push; auto. rewrite <- H4. auto.
+  apply binds_push_inv in H6. apply binds_push_inv in H8. intuition.
+    subst. auto. apply (H7 x0); auto.
+Qed.

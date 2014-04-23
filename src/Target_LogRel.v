@@ -207,6 +207,34 @@ Notation "a \in E[[ t ]] rho" := (interpE t rho a) (at level 0).
 
 (* basic properties *)
 
+Lemma interpV_AtomVal : forall D t rho a,
+  t_wft D t -> rho \in D[[ D ]] -> a \in V[[ t ]]rho ->
+  AtomVal (subst1_tt rho t) (subst2_tt rho t) a.
+Proof.
+  intros. gen rho a.
+  induction H; intros; unfold subst1_tt; unfold subst2_tt; simpl.
+
+  rewrite interpV_var in H2. destruct H2 as [RR]. destruct H2.
+  destruct RR as [[t1 t2] R].
+  assert (Rel t1 t2 R).
+    apply relenv_wfenv_2 in H1.
+    apply wfenv_binds with (x := X) (v := (t1, t2, R)) in H1; auto.
+  repeat rewrite get_map with (v := (t1, t2)). simpl in *. apply* H4.
+  rewrite get_map with (v := (t1, t2, R)); auto.
+  rewrite get_map with (v := (t1, t2, R)); auto.
+
+  rewrite interpV_bool in H1. destruct H1; subst; split; simpl;
+    try apply* t_value_typing_true; try apply* t_value_typing_false; apply wfenv_empty.
+
+  rewrite interpV_pair in H2.
+  destruct H2 as [v1]. destruct H2 as [v1']. destruct H2 as [v2]. destruct H2 as [v2'].
+  intuition. subst.
+  destruct (IHt_wft1 rho H1 (v1, v2) H2). destruct (IHt_wft2 rho H1 (v1', v2') H5).
+  split; simpl; apply* t_value_typing_pair.
+
+  rewrite interpV_arrow in H4. destruct* H4.
+Qed.
+
 Lemma interpE_weaken_generalized : forall D D' t rho rho' X RR,
   t_wft (D & D') t -> rho \in D[[ D ]] -> rho' \in D[[ D' ]] ->
   X \notin dom (D & D') ->
@@ -246,11 +274,11 @@ Proof.
   rewrite interpV_pair. rewrite interpV_pair in H5.
     destruct H5 as [v1]. destruct H5 as [v1']. destruct H5 as [v2]. destruct H5 as [v2'].
     exists v1 v1' v2 v2'. intuition.
-    apply* (IHt_wft1 D0 D'). apply* (IHt_wft2 D0 D').
+    rewrite* <- (IHt_wft1 D0 D'). rewrite* <- (IHt_wft2 D0 D').
   rewrite interpV_pair. rewrite interpV_pair in H5.
     destruct H5 as [v1]. destruct H5 as [v1']. destruct H5 as [v2]. destruct H5 as [v2'].
     exists v1 v1' v2 v2'. intuition.
-    apply* (IHt_wft1 D0 D'). apply* (IHt_wft2 D0 D').
+    rewrite* (IHt_wft1 D0 D'). rewrite* (IHt_wft2 D0 D').
 
   (* arrow *)
   rewrite interpV_arrow. split. skip.
@@ -271,16 +299,16 @@ Proof.
     skip. (* !!! stuck *)
     rewrite* concat_assoc.
     auto.
-    skip. (* TODO add relenv_push to libwfenv *)
+    apply relenv_push; auto. skip. (* TODO fix freshness premise *)
     auto.
     rewrite concat_assoc. apply* ok_push. skip. (* !!! stuck *)
   (* the "easy" premises of interpE_weaken_generalized / IH for t2*)
   rewrite concat_assoc. apply* H1.
   auto.
-  skip. (* TODO add relenv_push to libwfenv *)
+  apply relenv_push; auto. skip. (* TODO fix freshness premise *)
   skip. (* TODO make freshness premises of interpE_weaken less annoying*)
   apply H2 with (D := D0) (D'0 := D' & X0 ~ star); auto. rewrite* concat_assoc.
-  skip. (* TODO add relenv_push to libwfenv *)
+  apply relenv_push; auto. skip. (* TODO fix freshness premise *)
   rewrite concat_assoc. apply* ok_push.
 
 
