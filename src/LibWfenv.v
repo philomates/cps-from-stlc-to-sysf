@@ -250,3 +250,53 @@ Proof.
   apply binds_push_inv in H6. apply binds_push_inv in H8. intuition.
     subst. auto. apply (H7 x0); auto.
 Qed.
+
+Lemma relenv_concat_inv : forall {A B : Type}
+  (P : A -> Prop) (E E' : env A) (Q : B -> Prop) (F F' : env B) (R : A -> B -> Prop),
+  relenv P (E & E') Q (F & F') R -> dom E = dom F -> dom E' = dom F' ->
+  relenv P E Q F R /\ relenv P E' Q F' R.
+Proof.
+  unfold relenv. intros. intuition;
+  try solve [apply wfenv_concat_inv in H; apply wfenv_concat_inv in H3; intuition].
+  apply (H5 x); apply binds_concat_left_ok; eauto using wfenv_ok.
+  apply (H5 x); apply binds_concat_right; auto.
+Qed.
+
+Lemma dom_empty_empty : forall {A : Type} (E : env A),
+  dom E = \{} -> E = empty.
+Proof.
+  induction E using env_ind. auto.
+  intros.
+  assert (x \in \{}). rewrite <- H.
+  rewrite dom_push. rewrite in_union. left. rewrite in_singleton. auto.
+  apply in_empty_elim in H0. contradiction.
+Qed.
+
+Lemma relenv_empty_empty_1 : forall {A B : Type}
+  (P : A -> Prop) (E : env A) (Q : B -> Prop) (R : A -> B -> Prop),
+  relenv P E Q empty R -> E = empty.
+Proof.
+  unfold relenv. intuition. apply dom_empty_empty. rewrite dom_empty in H0. exact H0.
+Qed.
+
+Lemma relenv_empty_empty_2 : forall {A B : Type}
+  (P : A -> Prop) (Q : B -> Prop) (F : env B) (R : A -> B -> Prop),
+  relenv P empty Q F R -> F = empty.
+Proof. 
+  unfold relenv. intuition. apply dom_empty_empty. rewrite dom_empty in H0. symmetry. exact H0.
+Qed. 
+
+Lemma relenv_ind : forall {A B : Type} (P : A -> Prop) (Q : B -> Prop) (R : A -> B -> Prop)
+  (goal : env A -> env B -> Prop),
+  goal empty empty ->
+  (forall (E : env A) (F : env B) (x : var) (a : A) (b : B),
+    relenv P E Q F R -> goal E F -> x # E -> P a -> Q b -> R a b ->
+    goal (E & x ~ a) (F & x ~ b)) ->
+  forall (E : env A) (F : env B), relenv P E Q F R -> goal E F.
+Proof.
+  intros.
+  induction F using env_ind. apply relenv_empty_empty_1 in H1. subst. auto.
+  induction E using env_ind; intros. apply relenv_empty_empty_2 in H1. rewrite H1. auto.
+  (* problem: how to get the same x on both sides!?
+     might not be doable with this induction strategy *)
+
