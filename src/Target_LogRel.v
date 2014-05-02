@@ -196,15 +196,41 @@ Proof.
 Qed.
 
 Lemma interpV_weaken_generalized : forall D D' t rho rho' X t1 t2 R a,
-  t_wft (D & D') t -> rho \in D[[ D ]] -> rho' \in D[[ D' ]] ->
-  Rel t1 t2 R -> ok (rho & X ~ (t1, t2, R) & rho') ->
+  t_wft (D & D') t -> (rho & rho') \in D[[ D & D' ]] -> dom rho = dom D -> dom rho' = dom D' ->
+  Rel t1 t2 R -> X # D -> X # D' ->
   (a \in V[[ t ]](rho & rho') <-> a \in V[[ t ]](rho & X ~ (t1, t2, R) & rho')).
 Proof.
   intros. remember (D & D') as D0. gen D D' rho rho' X t1 t2 R a.
   induction H; split; intros; subst.
   (* var *)
-  rewrite interpV_var. rewrite interpV_var in H5. destruct H5 as [RR]. exists RR. intuition.
+  rewrite interpV_var. rewrite interpV_var in H7. destruct H7 as [RR]. exists RR. intuition.
     apply* binds_weaken.
+      gen D'. induction rho' using env_ind; intros.
+        rewrite dom_empty in H3. symmetry in H3. apply dom_empty_empty in H3. subst.
+        repeat rewrite concat_empty_r in *. apply interpD_ok in H2. intuition.
+        apply ok_push; auto. assert (X0 \notin (dom rho)); auto. rewrite* H1.
+      rewrite concat_assoc. apply ok_push.
+      (* want to apply IHrho' here but stuck *) skip.
+      repeat rewrite dom_concat. repeat rewrite notin_union.
+      rewrite concat_assoc in H2. apply interpD_ok in H2. intuition.
+      apply ok_push_inv in H11. intuition. rewrite dom_single. rewrite notin_singleton.
+      (* need to break down D' here too *) skip.
+      apply ok_push_inv in H11. intuition.
+
+(*      induction D' using env_ind; intros.
+      rewrite dom_empty in H3. apply dom_empty_empty in H3. subst.
+        repeat rewrite concat_empty_r in *. apply ok_push.
+        apply interpD_ok in H2. intuition. assert (X0 \notin (dom rho)); auto. rewrite* H1.
+      gen D'. induction rho' using env_ind; intros.
+      try rewrite concat_empty_r in *. apply ok_push. apply interpD_ok in H2. intuition.
+        assert (X0 \notin (dom rho)); auto. rewrite* H1.
+        rewrite concat_empty_r in H2. apply interpD
+        apply relenv_wfenv_2 in H2. apply wfenv_ok in H2. auto.
+        assert (X0 \notin (dom rho)). rewrite* H1. exact H10.
+      rewrite concat_assoc. apply ok_push.
+
+          
+        apply IHrho' with (D' := D' & x ~ star). *)
       
   rewrite interpV_var. rewrite interpV_var in H5. destruct H5 as [RR]. exists RR. intuition.
     apply binds_middle_inv in H6. intuition.
