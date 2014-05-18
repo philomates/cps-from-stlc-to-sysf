@@ -46,6 +46,14 @@ Inductive st_eval_context : ctx -> Prop :=
       s_type s -> s_eval_context E -> st_eval_context (t_ctx_ts E s m).
 
 (* reduction *)
+(* TODO: move me later) *)
+(* target level identity function *)
+Definition t_id := (t_trm_abs (t_typ_bvar 0) (t_trm_bvar 0)).
+Lemma IdTest : 
+  t_eval (t_trm_app t_id t_typ_bool t_trm_false) t_trm_false.
+Proof.
+  Admitted.
+
 Inductive st_red_base : trm -> trm -> Prop :=
   | st_red_base_st_true : st_red_base (s_trm_st t_trm_true s_typ_bool) s_trm_true
   | st_red_base_st_false : st_red_base (s_trm_st t_trm_false s_typ_bool) s_trm_false
