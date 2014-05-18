@@ -2,7 +2,8 @@
 * Backtranslation from Ahmed & Blume ICFP 2011                            *
 * William J. Bowman, Phillip Mates & James T. Perconti                    *
 ***************************************************************************)
-Require Import Core_Definitions Source_Definitions Target_Definitions LibWfenv Cps_Trans Multi_Definitions.
+Require Import Core_Definitions Source_Definitions Target_Definitions
+               LibWfenv Cps_Trans_Definitions Multi_Definitions.
 
 (* Subformula Property *)
 Inductive subformula : env_term -> trm -> typ -> Prop :=

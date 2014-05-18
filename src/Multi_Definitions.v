@@ -2,7 +2,8 @@
 * Multi-Language definitions From Ahmed & Blume ICFP 2011                 *
 * William J. Bowman, Phillip Mates & James T. Perconti                    *
 ***************************************************************************)
-Require Import Core_Definitions Source_Definitions Target_Definitions LibWfenv Cps_Trans.
+Require Import Core_Definitions Source_Definitions Target_Definitions 
+               LibWfenv Cps_Trans_Definitions.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)

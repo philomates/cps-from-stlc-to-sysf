@@ -24,7 +24,10 @@ FILES = \
 	Source_Properties \
 	Target_Definitions \
 	Target_Properties \
-	Cps_Trans
+	Cps_Trans_Definitions \
+	Multi_Definitions \
+	Backtranslation
+	# Cps_Trans
 
 ## Lists calculated from the above.
 
