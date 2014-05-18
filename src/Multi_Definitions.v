@@ -12,6 +12,10 @@ Inductive st_type : typ -> Prop :=
 
 Hint Constructors st_type.
 
+Inductive trans_type : typ -> Prop :=
+| trans_s_type : forall s, s_type s -> trans_type s
+| trans_t_type : forall s t, (s+) = t -> trans_type t.
+
 Inductive st_term : trm -> Prop :=
 | st_s_term : forall e, s_term e -> st_term e
 | st_t_term : forall m, t_term m -> st_term m
