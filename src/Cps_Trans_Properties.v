@@ -2,7 +2,8 @@ Require Import LibWfenv Core_Infrastructure
                Source_Definitions Target_Definitions
                Source_Properties Target_Properties
                Cps_Trans_Definitions.
-Require Import CpdtTactics.
+Require Import CpdtTactics2.
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 Require Import Recdef.
 
 (* CPS type translation properties *)
@@ -13,6 +14,13 @@ Proof.
   simpl. apply_fresh t_type_arrow as X; simpl; auto.
   apply t_type_pair; rewrite* open_tt_rec_t_type.
   apply_fresh t_type_arrow as Y; rewrite* open_tt_rec_t_type.
+Qed.
+
+Lemma cps_type_trans_preserves_well_formed_types_ssr : forall s,
+  s_type s -> t_type (s+).
+Proof.
+  case.
+  move/eqP.
 Qed.
 
 Lemma cps_type_trans_preserves_wft : forall s,

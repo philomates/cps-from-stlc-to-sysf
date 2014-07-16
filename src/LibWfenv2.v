@@ -18,7 +18,7 @@ Lemma dom_empty_empty : forall {A : Type} (E : env A),
 Proof.
   induction E using env_ind. auto.
   intros.
-  assert (x \in \{}). rewrite <- H.
+  assert (x \inLN \{}). rewrite <- H.
   rewrite dom_push. rewrite in_union. left. rewrite in_singleton. auto.
   apply in_empty_elim in H0. contradiction.
 Qed.
@@ -235,7 +235,7 @@ Proof.
   assert (relenv P E0 Q F0 R /\ relenv P E' Q F' R).
    apply IHrelenv; auto.
    (* if I had a notin_union_strengthen lemma or some such thing...
-      A \u {x} = B \u {x} -> x \notin A -> x \notin B -> A = B *)
+      A \u {x} = B \u {x} -> x \notinLN A -> x \notinLN B -> A = B *)
 
   
 hi

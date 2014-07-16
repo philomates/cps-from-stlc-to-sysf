@@ -1,7 +1,7 @@
 Require Import LibWfenv Core_Infrastructure
                Source_Definitions Target_Definitions
                Source_Properties Target_Properties.
-Require Import CpdtTactics.
+Require Import CpdtTactics2.
 Require Import Recdef.
 
 (* for applications where the type argument is irrelevant *)
@@ -40,7 +40,7 @@ Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
       (t_trm_abs (t_typ_arrow t_typ_bool (t_typ_bvar 1))
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_false))
   | cps_trans_abs : forall L G e s1 s2 u,
-      (forall x, x \notin L ->
+      (forall x, x \notinLN L ->
         cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 (open_ee_rec target 1 (t_trm_fvar x) u)) ->
       s_type s1 ->
       cps_trans G (s_trm_abs s1 e) (s_typ_arrow s1 s2)

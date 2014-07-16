@@ -42,6 +42,7 @@ Inductive typ : Set :=
   (* error case *)
   | typ_bad : typ.
 
+
 (*** Syntax of pre-terms ***)
 
 Inductive trm : Set :=
@@ -196,6 +197,18 @@ Notation open_tt_var := (fun t X => open_tt t (t_typ_fvar X)).
 Notation open_te_var := (fun e X => open_te e (t_typ_fvar X)).
 Notation s_open_ee_var := (fun e x => s_open_ee e (s_trm_fvar x)).
 Notation t_open_ee_var := (fun e x => t_open_ee e (t_trm_fvar x)).
+
+
+(* TODO
+ * after making t_open_ee_var a definition
+ * do something like
+ * Arguments t_open_ee_var / _ _ .
+ * this tells coq to _always_ reduce (when simpl-ing) t_open_ee_var even
+ * before you give it arguments
+ * you should be able to get away with Arguments <name> _ _ /. which means reduce after two arguments.
+ * I'm also surprised the default simpl huristic isn't working well for this
+ * -David
+ *)
 
 (*** Environments and Substitutions ***)
 

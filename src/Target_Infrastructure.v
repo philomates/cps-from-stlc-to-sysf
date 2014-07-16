@@ -200,7 +200,7 @@ Qed.
 (** Substitution for a fresh name is identity. *)
 
 Lemma subst_tt_fresh : forall Z U T,
-  Z \notin fv_tt T -> subst_tt Z U T = T.
+  Z \notinLN fv_tt T -> subst_tt Z U T = T.
 Proof.
   induction T; simpl; intros; f_equal*.
   case_var*.
@@ -238,7 +238,7 @@ Qed.
   up the abstraction with a fresh name x and then substituting u for x. *)
 
 Lemma subst_tt_intro : forall X T2 U,
-  X \notin fv_tt T2 -> type U ->
+  X \notinLN fv_tt T2 -> type U ->
   open_tt T2 U = subst_tt X U (open_tt_var T2 X).
 Proof.
   introv Fr Wu. unfolds open_tt_var. rewrite* subst_tt_open_tt.
@@ -295,7 +295,7 @@ Qed.
 (** Substitution for a fresh name is identity. *)
 
 Lemma subst_te_fresh : forall X U e,
-  X \notin fv_te e -> subst_te X U e = e.
+  X \notinLN fv_te e -> subst_te X U e = e.
 Proof.
   induction e; simpl; intros; f_equal*; auto* subst_tt_fresh.
 Qed.
@@ -326,7 +326,7 @@ Qed.
   up the abstraction with a fresh name x and then substituting u for x. *)
 
 Lemma subst_te_intro : forall X U e,
-  X \notin fv_te e -> type U ->
+  X \notinLN fv_te e -> type U ->
   open_te e U = subst_te X U (open_te_var e X).
 Proof.
   introv Fr Wu. unfolds open_te_var. rewrite* subst_te_open_te.
@@ -375,7 +375,7 @@ Qed.
 (** Substitution for a fresh name is identity. *)
 
 Lemma subst_ee_fresh : forall x u e,
-  x \notin fv_ee e -> subst_ee x u e = e.
+  x \notinLN fv_ee e -> subst_ee x u e = e.
 Proof.
   induction e; simpl; intros; f_equal*.
   case_var*.
@@ -406,7 +406,7 @@ Qed.
   up the abstraction with a fresh name x and then substituting u for x. *)
 
 Lemma subst_ee_intro : forall x u e,
-  x \notin fv_ee e -> term u ->
+  x \notinLN fv_ee e -> term u ->
   open_ee e u = subst_ee x u (open_ee_var e x).
 Proof.
   introv Fr Wu. unfolds open_ee_var. rewrite* subst_ee_open_ee.
@@ -748,8 +748,8 @@ Hint Immediate okt_strengthen.
 (** ** Environment is unchanged by substitution from a fresh name *)
 
 Lemma notin_fv_tt_open : forall Y X T,
-  X \notin fv_tt (T open_tt_var Y) ->
-  X \notin fv_tt T.
+  X \notinLN fv_tt (T open_tt_var Y) ->
+  X \notinLN fv_tt T.
 Proof.
  introv. unfold open_tt. generalize 0.
  induction T; simpl; intros k Fr; auto.
@@ -758,7 +758,7 @@ Proof.
 Qed.
 
 Lemma notin_fv_wf : forall E X T,
-  wft E T -> X # E -> X \notin fv_tt T.
+  wft E T -> X # E -> X \notinLN fv_tt T.
 Proof.
   induction 1; intros Fr; simpl.
   eauto.

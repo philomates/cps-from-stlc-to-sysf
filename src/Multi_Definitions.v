@@ -27,7 +27,7 @@ Inductive st_term : trm -> Prop :=
     s_type s -> t_term m -> st_term (s_trm_st m s)
 | st_boundary_ts_term : forall L s e m,
     s_type s -> s_term e ->
-    (forall x, x \notin L -> t_term (t_open_ee_var m x)) ->
+    (forall x, x \notinLN L -> t_term (t_open_ee_var m x)) ->
     st_term (t_trm_ts e s m)
 
 with st_value : trm -> Prop :=
@@ -114,7 +114,7 @@ Inductive st_typing : env_type -> env_term -> trm -> typ -> Prop :=
     st_typing D G m (s+) -> st_typing D G (s_trm_st m s) s
 | st_boundary_ts_typing : forall L D G e m s t,
     st_typing D G e s -> 
-    (forall x, x \notin L -> st_typing D (G & x ~ (s+)) (t_open_ee_var m x) t) ->
+    (forall x, x \notinLN L -> st_typing D (G & x ~ (s+)) (t_open_ee_var m x) t) ->
     st_typing D G (t_trm_ts e s m) t.
 
 (* Examples *)

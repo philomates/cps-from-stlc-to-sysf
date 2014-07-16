@@ -158,7 +158,7 @@ Proof. inversion 1. assumption. Qed.
 
 Lemma s_typing_abs_inv : forall G e s1 s2,
   s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2) ->
-  exists L, forall x, x \notin L ->
+  exists L, forall x, x \notinLN L ->
   s_typing (G & x ~ s1) (s_open_ee_var e x) s2.
 Proof. inversion 1. exists L. intros. apply* H4. Qed.
 

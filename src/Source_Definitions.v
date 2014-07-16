@@ -4,6 +4,7 @@
 ***************************************************************************)
 
 Require Import Core_Definitions LibWfenv.
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 
 (* ********************************************************************** *)
 (** * Description of the Language *)
@@ -15,7 +16,63 @@ Inductive s_type : typ -> Prop :=
   | s_type_arrow : forall s1 s2, 
       s_type s1 -> s_type s2 -> s_type (s_typ_arrow s1 s2).
 
-(* Source terms *)
+Fixpoint s_typeb (s : typ) : bool :=
+  match s with
+    s_typ_bool => true
+  | s_typ_arrow s1 s2 =>
+      s_typeb s1 && s_typeb s2
+  | _ => false
+  end.
+
+Lemma s_typeP : forall s : typ, reflect (s_type s) (s_typeb s). 
+Proof.
+  move=> s.
+  elim: s.
+  rewrite /s_typeb.
+  constructor. by apply s_type_bool.
+
+  move=> s1 s1P s2 s2P /=.
+  move: s1P s2P.
+  case: (s_typeb s1) => //=.
+  case: (s_typeb s2) => //=.
+  move=> s1P s2P.
+  case: s1P.
+  case: s2P.
+  move=> s2P s1P.
+  constructor.
+  apply s_type_arrow; by [].
+  move=> s2P s1P.
+  constructor.
+  move=> sF.
+  apply s2P.
+  by invert sF.
+  move=> s1P.
+  constructor.
+  move=> sF.
+  apply s1P.
+  by invert sF.
+  move=> s1P s2P.
+  constructor.
+  move=> sF.
+  invert s2P => s2F.
+  apply s2F.
+  by invert sF.
+  move=> s1P s2P.
+  constructor.
+  move=> sF.
+  invert s1P => s2F.
+  apply s2F.
+  by invert sF.
+  by constructor; move=> sF; invert sF.
+  by constructor; move=> sF; invert sF.
+  by constructor; move=> sF; invert sF.
+  by constructor; move=> sF; invert sF.
+  by constructor; move=> sF; invert sF.
+  by constructor; move=> sF; invert sF.
+Qed.
+
+
+
 
 Inductive s_term : trm -> Prop :=
   | s_term_value : forall v, s_value v -> s_term v
@@ -31,7 +88,7 @@ with s_value : trm -> Prop :=
   | s_value_true : s_value s_trm_true
   | s_value_false : s_value s_trm_false
   | s_value_abs  : forall L s e,
-      (forall x, x \notin L -> s_term (s_open_ee_var e x)) ->
+      (forall x, x \notinLN L -> s_term (s_open_ee_var e x)) ->
       (s_type s) ->
       s_value (s_trm_abs s e).
 
@@ -46,7 +103,7 @@ Inductive s_typing : env_term -> trm -> typ -> Prop :=
   | s_typing_false : forall G,
       wfenv s_type G -> s_typing G s_trm_false s_typ_bool
   | s_typing_abs : forall L G e s1 s2,
-      (forall x, x \notin L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
+      (forall x, x \notinLN L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
       (s_type s1) ->
       s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
   | s_typing_if : forall G e1 e2 e3 s,
@@ -84,7 +141,7 @@ Inductive s_context : ctx -> Prop :=
       s_term e -> s_context C ->
       s_context (s_ctx_app2 e C)
   | s_context_abs : forall L T C,
-      (forall x, x \notin L -> s_context (s_ctx_open_ee_var C x)) ->
+      (forall x, x \notinLN L -> s_context (s_ctx_open_ee_var C x)) ->
       (s_type T) ->
       s_context (s_ctx_abs T C)
   | s_context_if_true : forall e1 C e3,
@@ -115,7 +172,7 @@ Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
       s_context_typing C G_hole s_hole G s ->
       s_context_typing (s_ctx_app2 e C) G_hole s_hole G s'
   | s_context_typing_abs : forall L C G_hole s_hole G s s',
-      (forall x, x \notin L -> s_context_typing (s_ctx_open_ee_var C x)
+      (forall x, x \notinLN L -> s_context_typing (s_ctx_open_ee_var C x)
                                                 G_hole s_hole
                                                 (G & x ~ s) s') ->
       s_type s ->

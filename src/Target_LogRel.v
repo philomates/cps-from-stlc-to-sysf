@@ -60,7 +60,7 @@ Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
           AtomVal (subst1_tt rho t) (subst2_tt rho t) a /\
           forall t1 t2 R u1 u2,
             Rel t1 t2 R ->
-            exists L, forall X, X \notin L ->
+            exists L, forall X, X \notinLN L ->
               interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
               termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
                       (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
@@ -113,7 +113,7 @@ Lemma interpV_arrow : forall t t' rho a,
   AtomVal (subst1_tt rho (t_typ_arrow t t')) (subst2_tt rho (t_typ_arrow t t')) a /\
   (forall t1 t2 R u1 u2,
     Rel t1 t2 R ->
-    exists L, forall X, X \notin L ->
+    exists L, forall X, X \notinLN L ->
       interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
       interpE (open_tt_var t' X) (rho & X ~ (t1, t2, R))
               (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2)).
@@ -144,18 +144,18 @@ Definition log_equiv (D : env_type) (G : env_term) (m1 m2 : trm) (t : typ) :=
 (* notations *)
 
 Notation "D[[ D ]]" := (interpD D) (at level 0).
-Notation "rho \in D[[ D ]]" := (interpD D rho) (at level 0).
+Notation "rho \inLN D[[ D ]]" := (interpD D rho) (at level 0).
 Notation "G[[ G ]] rho" := (interpG G rho) (at level 0).
-Notation "( g1 , g2 ) \in G[[ G ]] rho" := (interpG G rho g1 g2) (at level 0).
+Notation "( g1 , g2 ) \inLN G[[ G ]] rho" := (interpG G rho g1 g2) (at level 0).
 Notation "V[[ t ]] rho" := (interpV t rho) (at level 0).
-Notation "a \in V[[ t ]] rho" := (interpV t rho a) (at level 0).
+Notation "a \inLN V[[ t ]] rho" := (interpV t rho a) (at level 0).
 Notation "E[[ t ]] rho" := (interpE t rho) (at level 0).
-Notation "a \in E[[ t ]] rho" := (interpE t rho a) (at level 0).
+Notation "a \inLN E[[ t ]] rho" := (interpE t rho a) (at level 0).
 
 (* basic properties *)
 
 Lemma interpV_AtomVal : forall D t rho a,
-  t_wft D t -> rho \in D[[ D ]] -> a \in V[[ t ]]rho ->
+  t_wft D t -> rho \inLN D[[ D ]] -> a \inLN V[[ t ]]rho ->
   AtomVal (subst1_tt rho t) (subst2_tt rho t) a.
 Proof.
   intros. gen rho a.
@@ -183,10 +183,10 @@ Proof.
 Qed.
 
 Lemma interpE_weaken_generalized : forall D D' t rho rho' X RR,
-  t_wft (D & D') t -> rho \in D[[ D ]] -> rho' \in D[[ D' ]] ->
-  X \notin dom (D & D') ->
-  (forall a, a \in V[[ t ]](rho & rho') <-> a \in V[[ t ]](rho & X ~ RR & rho')) ->
-  forall a,  a \in E[[ t ]](rho & rho') <-> a \in E[[ t ]](rho & X ~ RR & rho').
+  t_wft (D & D') t -> rho \inLN D[[ D ]] -> rho' \inLN D[[ D' ]] ->
+  X \notinLN dom (D & D') ->
+  (forall a, a \inLN V[[ t ]](rho & rho') <-> a \inLN V[[ t ]](rho & X ~ RR & rho')) ->
+  forall a,  a \inLN E[[ t ]](rho & rho') <-> a \inLN E[[ t ]](rho & X ~ RR & rho').
 Proof.
   unfold interpE. intros. unfold subst1_tt. unfold subst2_tt.
   repeat rewrite map_concat. repeat rewrite map_single. repeat rewrite subst_tt_weaken;
@@ -196,9 +196,9 @@ Proof.
 Qed.
 
 Lemma interpV_weaken_generalized : forall D D' t rho rho' X t1 t2 R a,
-  t_wft (D & D') t -> (rho & rho') \in D[[ D & D' ]] -> dom rho = dom D -> dom rho' = dom D' ->
+  t_wft (D & D') t -> (rho & rho') \inLN D[[ D & D' ]] -> dom rho = dom D -> dom rho' = dom D' ->
   Rel t1 t2 R -> X # D -> X # D' ->
-  (a \in V[[ t ]](rho & rho') <-> a \in V[[ t ]](rho & X ~ (t1, t2, R) & rho')).
+  (a \inLN V[[ t ]](rho & rho') <-> a \inLN V[[ t ]](rho & X ~ (t1, t2, R) & rho')).
 Proof.
   intros. remember (D & D') as D0. gen D D' rho rho' X t1 t2 R a.
   induction H; split; intros; subst.
@@ -208,7 +208,7 @@ Proof.
       gen D'. induction rho' using env_ind; intros.
         rewrite dom_empty in H3. symmetry in H3. apply dom_empty_empty in H3. subst.
         repeat rewrite concat_empty_r in *. apply interpD_ok in H2. intuition.
-        apply ok_push; auto. assert (X0 \notin (dom rho)); auto. rewrite* H1.
+        apply ok_push; auto. assert (X0 \notinLN (dom rho)); auto. rewrite* H1.
       rewrite concat_assoc. apply ok_push.
       (* want to apply IHrho' here but stuck *) skip.
       repeat rewrite dom_concat. repeat rewrite notin_union.
@@ -220,13 +220,13 @@ Proof.
 (*      induction D' using env_ind; intros.
       rewrite dom_empty in H3. apply dom_empty_empty in H3. subst.
         repeat rewrite concat_empty_r in *. apply ok_push.
-        apply interpD_ok in H2. intuition. assert (X0 \notin (dom rho)); auto. rewrite* H1.
+        apply interpD_ok in H2. intuition. assert (X0 \notinLN (dom rho)); auto. rewrite* H1.
       gen D'. induction rho' using env_ind; intros.
       try rewrite concat_empty_r in *. apply ok_push. apply interpD_ok in H2. intuition.
-        assert (X0 \notin (dom rho)); auto. rewrite* H1.
+        assert (X0 \notinLN (dom rho)); auto. rewrite* H1.
         rewrite concat_empty_r in H2. apply interpD
         apply relenv_wfenv_2 in H2. apply wfenv_ok in H2. auto.
-        assert (X0 \notin (dom rho)). rewrite* H1. exact H10.
+        assert (X0 \notinLN (dom rho)). rewrite* H1. exact H10.
       rewrite concat_assoc. apply ok_push.
 
           
@@ -290,7 +290,7 @@ Proof.
 
 
 Lemma interpV_Rel : forall D t rho,
-  t_wft D t -> rho \in D[[ D ]] ->
+  t_wft D t -> rho \inLN D[[ D ]] ->
   Rel (subst1_tt rho t) (subst2_tt rho t) (V[[ t ]]rho).
 Proof.
   induction 1; intros.
@@ -326,9 +326,9 @@ Proof.
 Qed.
 
 Lemma interpV_substitution : forall D X t t' rho a,
-  t_wft (D & X ~ star) t -> t_wft D t' -> rho \in D[[ D ]] ->
-  (a \in V[[ subst_tt (X ~ t') t ]]rho <->
-   a \in V[[ t ]](rho & (X ~ (subst1_tt rho t', subst2_tt rho t', V[[ t' ]] rho)))).
+  t_wft (D & X ~ star) t -> t_wft D t' -> rho \inLN D[[ D ]] ->
+  (a \inLN V[[ subst_tt (X ~ t') t ]]rho <->
+   a \inLN V[[ t ]](rho & (X ~ (subst1_tt rho t', subst2_tt rho t', V[[ t' ]] rho)))).
 Proof.
   induction 1; split; intros; simpl in *.
 

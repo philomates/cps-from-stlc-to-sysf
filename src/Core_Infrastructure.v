@@ -225,21 +225,21 @@ Qed.
 
 (* weakening for substitutions *)
 
-Lemma subst_tt_push : forall t X t' d, X \notin fv_tt t ->
+Lemma subst_tt_push : forall t X t' d, X \notinLN fv_tt t ->
   subst_tt (d & X ~ t') t = subst_tt d t.
 Proof.
   induction t; simpl; intros; auto; try rewrite* IHt1; try rewrite* IHt2.
   rewrite get_push. cases_if*. false. auto using in_singleton_self.
 Qed.
 
-Lemma subst_te_push : forall e X t d, X \notin fv_te e ->
+Lemma subst_te_push : forall e X t d, X \notinLN fv_te e ->
   subst_te (d & X ~ t) e = subst_te d e.
 Proof.
   induction e; simpl; auto; intros; try rewrite* subst_tt_push;
     try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3.
 Qed.
 
-Lemma subst_ee_push : forall e x e' g l, x \notin fv_ee l e ->
+Lemma subst_ee_push : forall e x e' g l, x \notinLN fv_ee l e ->
   subst_ee l (g & x ~ e') e = subst_ee l g e.
 Proof.
   induction e; simpl; intros; auto;
@@ -247,7 +247,7 @@ Proof.
   cases_if*; rewrite get_push; cases_if*; false; auto using in_singleton_self.
 Qed.
 
-Lemma subst_tt_weaken : forall t X t' d d', X \notin fv_tt t ->
+Lemma subst_tt_weaken : forall t X t' d d', X \notinLN fv_tt t ->
   subst_tt (d & X ~ t' & d') t = subst_tt (d & d') t.
 Proof.
   induction t; simpl; intros; auto; try rewrite* IHt1; try rewrite* IHt2.
@@ -255,14 +255,14 @@ Proof.
   rewrite get_single. cases_if*. false. auto using in_singleton_self.
 Qed.
 
-Lemma subst_te_weaken : forall e X t d d', X \notin fv_te e ->
+Lemma subst_te_weaken : forall e X t d d', X \notinLN fv_te e ->
   subst_te (d & X ~ t & d') e = subst_te (d & d') e.
 Proof.
   induction e; simpl; auto; intros; try rewrite* subst_tt_weaken;
     try rewrite* IHe; try rewrite* IHe1; try rewrite* IHe2; try rewrite* IHe3.
 Qed.
 
-Lemma subst_ee_weaken : forall e x e' g g' l, x \notin fv_ee l e ->
+Lemma subst_ee_weaken : forall e x e' g g' l, x \notinLN fv_ee l e ->
   subst_ee l (g & x ~ e' & g') e = subst_ee l (g & g') e.
 Proof.
   induction e; simpl; intros; auto;
@@ -363,8 +363,8 @@ Ltac frauto :=
   let x := fresh "x" in
     pick_fresh x; eauto;
       try match goal with
-            | [ H : (forall x : var, x \notin ?L -> _) |- _ ]
-              => let Fr := fresh "Fr" in assert (Fr : x \notin L); eauto end.
+            | [ H : (forall x : var, x \notinLN ?L -> _) |- _ ]
+              => let Fr := fresh "Fr" in assert (Fr : x \notinLN L); eauto end.
 
 (** These tactics help applying a lemma which conclusion mentions
   an environment (E & F) in the particular case when F is empty *)

@@ -279,7 +279,7 @@ Lemma dom_empty_empty : forall {A : Type} (E : env A),
 Proof.
   induction E using env_ind. auto.
   intros.
-  assert (x \in \{}). rewrite <- H.
+  assert (x \inLN \{}). rewrite <- H.
   rewrite dom_push. rewrite in_union. left. rewrite in_singleton. auto.
   apply in_empty_elim in H0. contradiction.
 Qed.
@@ -324,17 +324,17 @@ Qed.
 Proof.
   intros. induction E using env_ind; induction F using env_ind; split; intros.
   unfold relenv in H. destruct H.
-  assert (x \in \{}). rewrite dom_empty in H. rewrite H.
+  assert (x \inLN \{}). rewrite dom_empty in H. rewrite H.
   apply get_some_inv with (v := b). apply binds_push_eq.
   apply in_empty_elim in H1. contradiction.
 
   unfold relenv in H. destruct H.
-  assert (x \in \{}). rewrite dom_empty in H. rewrite <- H.
+  assert (x \inLN \{}). rewrite dom_empty in H. rewrite <- H.
   apply get_some_inv with (v := a). apply binds_push_eq.
   apply in_empty_elim in H1. contradiction.
 
   unfold relenv in H. destruct H.
-  assert (x \in \{}). rewrite dom_empty in H. rewrite H.
+  assert (x \inLN \{}). rewrite dom_empty in H. rewrite H.
   rewrite dom_concat. rewrite in_union. left.
   apply get_some_inv with (v := v). apply binds_push_eq.
   apply in_empty_elim in H1. contradiction.
