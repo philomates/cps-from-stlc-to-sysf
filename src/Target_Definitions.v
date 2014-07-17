@@ -3,7 +3,7 @@
 * William J. Bowman, Phillip Mates & James T. Perconti                     *
 ***************************************************************************)
 
-Require Import Core_Definitions LibWfenv.
+Require Import Core_Definitions LibWfenv Core_Infrastructure.
 Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 
 (* ********************************************************************** *)
@@ -12,17 +12,23 @@ Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 
 (* Target Types *)
 
-Inductive t_type : typ -> Prop :=
-  | t_type_var : forall x, t_type (t_typ_fvar x)
-  | t_type_bool : t_type t_typ_bool
-  | t_type_pair : forall t1 t2,
-      t_type t1 -> t_type t2 -> t_type (t_typ_pair t1 t2)
-  | t_type_arrow : forall L t1 t2,
-      (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) ->
-      (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
-      t_type (t_typ_arrow t1 t2).
+Inductive t_type (t : typ) : Prop :=
+| t_type_var x of t = t_typ_fvar x
+| t_type_bool of t = t_typ_bool
+| t_type_pair : forall t1 t2, t_type t1 -> t_type t2 -> 
+                  t = t_typ_pair t1 t2 -> t_type t
+| t_type_arrow : forall (L : vars) t1 t2,
+     (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) ->
+     (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
+     t = t_typ_arrow t1 t2 -> t_type t.
 
-Hint Constructors t_type.
+
+Lemma t_tp_sub (t : typ) X : 
+        t_type t -> X \notinLN (fv_tt t) -> t_type (open_tt_var t X). 
+Proof.
+elim: t X.
+- move=>X.
+
 
 Fixpoint t_typeb (t : typ) : bool :=
   match t with
@@ -33,10 +39,35 @@ Fixpoint t_typeb (t : typ) : bool :=
   | _ => false
   end.
 
-Lemma t_typeP : forall t : typ, reflect (t_type t) (t_typeb t). 
+Lemma t_typeP t : reflect (t_type t) (t_typeb t). 
 Proof.
-move=> s.
-elim: s.
+elim: t=>/=; try by move=>*; constructor; case. 
+- by move=>v; constructor; apply: (@t_type_var _ v). 
+- by constructor; constructor. 
+- move=>t1 H1 t2 H2.
+  case: H1=>//=.
+  - case: H2=>H1 H2; constructor.
+    - by apply: t_type_pair H2 H1 _.
+    - by case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E2. 
+  by move=>H1; constructor; case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E1. 
+
+move=>t1 H1 t2 H2.
+case: H1=>//=.
+- case: H2=>//.
+  - move=>H2 H1; constructor.
+    set L := fv_tt t1. 
+    apply: (@t_type_arrow _ L) (erefl _).
+    - move=>X nl.  
+      case: H1. 
+
+
+
+    case=>// s1 s2 S1 S2 [E1 E2]. apply: H2; rewrite E1. 
+   
+
+
+
+
 by constructor; move=> tF; invert tF.
 by constructor; move=> tF; invert tF.
 move=> n.

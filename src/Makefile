@@ -10,12 +10,19 @@
 ## Paths to executables. Do not include options here.
 ## Modify these to suit your Coq installation, if necessary.
 
-COQC = coqc
+COQC = coqc -I /usr/misc/coq/lib/coq/user-contrib/Ssreflect -as Ssreflect
 COQDEP = coqdep
 
 ## List of files to be compiled and documented.
 
 FILES = \
+        pred\
+        prelude\
+        idynamic\
+        ordtype\
+        finmap\
+        pcm\
+        unionmap\
 	CpdtTactics \
 	LibWfenv \
 	Core_Definitions \
@@ -40,7 +47,7 @@ VOFILES  = $(foreach i, $(FILES), $(i).vo)
 .SUFFIXES: .v .vo
 
 all:
-	+make coq
+	+make coq 
 
 coq: $(VOFILES)
 

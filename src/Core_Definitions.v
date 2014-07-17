@@ -7,40 +7,52 @@
  * William J. Bowman, Phillip Mates & James T. Perconti     *
  ************************************************************)
 
-Require Export LibLN.
-Require Import EqNat.
+Require Import ssreflect ssrnat eqtype.
+(* Require Export LibLN.
+Require Import EqNat. 
+*)
+
+Definition var := nat. 
+
 Implicit Type x : var.
 Implicit Type X : var.
 
+
 (* flag for convenience later *)
-Inductive lang : Set := source : lang | target : lang.
+Inductive lang := source | target.
 
 Definition beq_lang l1 l2 :=
-  match (l1, l2) with
-  | (source, source) => true
-  | (target, target) => true
-  | (_, _) => false
+  match l1, l2 with
+  | source, source => true
+  | target, target => true
+  | _, _ => false
   end.
 
-Definition inc_if_eq (l1 l2 : lang) : nat -> nat :=
-  if beq_lang l1 l2 then S else id.
+Lemma eq_langP : Equality.axiom beq_lang.
+Proof. by case; case; constructor. Qed.
+
+Definition lang_eqMixin := EqMixin eq_langP. 
+Canonical lang_eqType := EqType lang lang_eqMixin.
+
+Definition inc_if_eq (l1 l2 : lang) (x : nat) : nat :=
+  if l1 == l2 then x.+1 else x.
 
 (*** Syntax of pre-types ***)
 
 Inductive typ : Set :=
   (* Source types *)
-  | s_typ_bool : typ                (* bool *)
-  | s_typ_arrow : typ -> typ -> typ (* s -> s *)
+  | s_typ_bool                 (* bool *)
+  | s_typ_arrow of typ & typ   (* s -> s *)
 
   (* Target types *)
-  | t_typ_bvar : nat -> typ         (* N *)
-  | t_typ_fvar : var -> typ         (* X *)
-  | t_typ_bool : typ                (* bool *)
-  | t_typ_pair : typ -> typ -> typ  (* t x t *)
-  | t_typ_arrow : typ -> typ -> typ (* forall . t -> t *)
+  | t_typ_bvar of nat        (* N *)
+  | t_typ_fvar of var        (* X *)
+  | t_typ_bool               (* bool *)
+  | t_typ_pair of typ & typ  (* t x t *)
+  | t_typ_arrow of typ & typ (* forall . t -> t *)
 
   (* error case *)
-  | typ_bad : typ.
+  | typ_bad.
 
 
 (*** Syntax of pre-terms ***)
@@ -85,7 +97,7 @@ Fixpoint open_tt_rec (K : nat) (t' : typ) (t : typ) : typ :=
   | s_typ_bool        => t
   | s_typ_arrow _ _   => t
   (* target types *)
-  | t_typ_bvar N      => if beq_nat K N then t' else (t_typ_bvar N)
+  | t_typ_bvar N      => if K == N then t' else t_typ_bvar N
   | t_typ_fvar X      => t_typ_fvar X
   | t_typ_bool        => t_typ_bool
   | t_typ_pair t1 t2  => t_typ_pair (open_tt_rec K t' t1)
@@ -141,7 +153,7 @@ Fixpoint open_te_rec (K : nat) (t' : typ) (e : trm) : trm :=
 Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
   match e with
   (* source terms *)
-  | s_trm_bvar i      => if andb (beq_lang l source) (beq_nat k i)
+  | s_trm_bvar i      => if (l == source) && (k == i)
                          then e'
                          else (s_trm_bvar i)
   | s_trm_fvar x      => s_trm_fvar x
@@ -156,7 +168,7 @@ Fixpoint open_ee_rec (l : lang) (k : nat) (e' : trm) (e : trm) : trm :=
                                    (open_ee_rec l k e' e2)
   | s_trm_st m s      => s_trm_st (open_ee_rec l k e' m) s
   (* target terms *)
-  | t_trm_bvar i      => if andb (beq_lang l target) (beq_nat k i)
+  | t_trm_bvar i      => if (l == target) && (k == i)
                          then e'
                          else t_trm_bvar i
   | t_trm_fvar x      => t_trm_fvar x
