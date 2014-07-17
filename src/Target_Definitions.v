@@ -31,36 +31,34 @@ Fixpoint t_typeb (t : typ) : bool :=
   | _ => false
   end.
 
-
 (* Target Terms *)
 
+
 Inductive t_term (t : trm) : Prop :=
+| t_term_value of t_value t 
+| t_term_if u m1 m2 of 
+    t_value u & t_term m1 & t_term m2 & t = t_trm_if u m1 m2
+| t_term_let_fst L u m of
+    t_value u & forall x, x \notinLN L -> t_term (t_open_ee_var m x) &
+    t = t_trm_let_fst u m
+| t_term_let_snd (L : vars) (u : trm) (m : trm) of 
+    t_value u &
+    forall x, x \notinLN L -> t_term (t_open_ee_var m x) &
+    t = t_trm_let_snd u m 
+| t_term_app u1 T u2 of
+    t_value u1 & t_type T & t_value u2 & t = t_trm_app u1 T u2
 
-  | t_term_value : forall u, t_value u -> t_term u
-  | t_term_if : forall u m1 m2,
-      t_value u -> t_term m1 -> t_term m2 -> t_term (t_trm_if u m1 m2)
-  | t_term_let_fst : forall L u m,
-      t_value u ->
-      (forall x, x \notinLN L -> t_term (t_open_ee_var m x)) ->
-      t_term (t_trm_let_fst u m)
-  | t_term_let_snd : forall L u m,
-      t_value u ->
-      (forall x, x \notinLN L -> t_term (t_open_ee_var m x)) ->
-      t_term (t_trm_let_snd u m)
-  | t_term_app : forall u1 t u2,
-      t_value u1 -> t_type t -> t_value u2 -> t_term (t_trm_app u1 t u2)
-
-with t_value : trm -> Prop :=
-  | t_value_var : forall x, t_value (t_trm_fvar x)
-  | t_value_true : t_value t_trm_true
-  | t_value_false : t_value t_trm_false
-  | t_value_pair : forall u1 u2,
-      t_value u1 -> t_value u2 -> t_value (t_trm_pair u1 u2)
-  | t_value_abs  : forall L t m,
-      (forall X, X \notinLN L -> t_type (open_tt_var t X)) ->
-      (forall x X, x \notinLN L -> X \notinLN L ->
-        t_term (open_te_var (t_open_ee_var m x) X)) ->
-      t_value (t_trm_abs t m).
+with t_value (t : trm) : Prop :=
+| t_value_var x of t = t_trm_fvar x
+| t_value_true of t = t_trm_true
+| t_value_false of t = t_trm_false
+| t_value_pair u1 u2 of 
+   t_value u1 & t_value u2 & t = t_trm_pair u1 u2
+| t_value_abs L T m of
+   forall X, X \notinLN L -> t_type (open_tt_var T X) &
+   forall x X, x \notinLN L -> X \notinLN L ->
+     t_term (open_te_var (t_open_ee_var m x) X) &
+   t = t_trm_abs T m.
 
 Scheme t_term_mut := Induction for t_term Sort Prop
 with t_value_mut := Induction for t_value Sort Prop.
