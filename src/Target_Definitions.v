@@ -13,30 +13,14 @@ Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 (* Target Types *)
 
 Inductive t_type (t : typ) : Prop :=
-| t_type_var x of t = t_typ_fvar x -> t_type t
-| t_type_bool
-| t_type_pair : forall t1 t2, t_type t1 -> t_type t2 -> 
-                  t = t_typ_pair t1 t2 -> t_type t
-| t_type_arrow : forall (L : vars) t1 t2,
-     (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) ->
-     (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
-     t = t_typ_arrow t1 t2 -> t_type t.
-
-(*
-Inductive t_type : typ -> Prop :=
-  | t_type_var : forall x, t_type (t_typ_fvar x)
-  | t_type_bool : t_type t_typ_bool
-  | t_type_pair : forall t1 t2,
-      t_type t1 -> t_type t2 -> t_type (t_typ_pair t1 t2)
-  | t_type_arrow : forall L t1 t2,
-      (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) ->
-      (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
-      t_type (t_typ_arrow t1 t2).
-*)
-
-
-
-
+| t_type_var x of t = t_typ_fvar x
+| t_type_bool of t = t_typ_bool
+| t_type_pair t1 t2 of 
+    t_type t1 & t_type t2 & t = t_typ_pair t1 t2
+| t_type_arrow (L : vars) t1 t2 of
+     (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) &
+     (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) &
+     t = t_typ_arrow t1 t2.
 
 Fixpoint t_typeb (t : typ) : bool :=
   match t with
@@ -50,7 +34,8 @@ Fixpoint t_typeb (t : typ) : bool :=
 
 (* Target Terms *)
 
-Inductive t_term : trm -> Prop :=
+Inductive t_term (t : trm) : Prop :=
+
   | t_term_value : forall u, t_value u -> t_term u
   | t_term_if : forall u m1 m2,
       t_value u -> t_term m1 -> t_term m2 -> t_term (t_trm_if u m1 m2)
