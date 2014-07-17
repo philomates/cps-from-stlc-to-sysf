@@ -1,6 +1,6 @@
 (*****************************************************************************
  * Extension to TLC's LibEnv.ok to allow checking stronger properties of env *
- * William J. Bowman, Phillip Mates & James T. Perconti                      *
+ * William J. Bowman, Phillip Mates +&+ James T. Perconti                      *
  *****************************************************************************)
 
 (* in this file: wfenv, relenv, relenv3, and related lemmas *)
@@ -30,21 +30,21 @@ Qed.
 Inductive wfenv {A : Type} : (A -> Prop) -> (env A) -> Prop :=
 | wfenv_empty : forall (P : A -> Prop), wfenv P empty
 | wfenv_push : forall (P : A -> Prop) (E : env A) (x : var) (v : A),
-    wfenv P E -> x # E -> P v -> wfenv P (E & x ~ v).
+    wfenv P E -> x # E -> P v -> wfenv P (E +&+ x ~ v).
 
 Hint Constructors wfenv.
 
 (* Properties of wfenv *)
 
 Lemma wfenv_push_inv : forall {A : Type} (P : A -> Prop) (E : env A) x v,
-  wfenv P (E & x ~ v) -> wfenv P E /\ x # E /\ P v.
+  wfenv P (E +&+ x ~ v) -> wfenv P E /\ x # E /\ P v.
 Proof.
   intros. inversion H. apply empty_push_inv in H2. contradiction.
   apply eq_push_inv in H0. intuition; subst; auto.
 Qed.  
 
 Lemma wfenv_push_inv_wfenv : forall {A : Type} (P : A -> Prop) (E : env A) x v,
-  wfenv P (E & x ~ v) -> wfenv P E.
+  wfenv P (E +&+ x ~ v) -> wfenv P E.
 Proof.
   intros. apply wfenv_push_inv in H. intuition.
 Qed.
@@ -66,9 +66,9 @@ Proof.
 Qed.
 
 Lemma wfenv_weaken : forall {A : Type} (P : A -> Prop) (E F : env A) x v,
-  wfenv P (E & F) -> x # (E & F) -> P v -> wfenv P (E & x ~ v & F).
+  wfenv P (E +&+ F) -> x # (E +&+ F) -> P v -> wfenv P (E +&+ x ~ v +&+ F).
 Proof.
-  intros. remember (E & F) as E'.
+  intros. remember (E +&+ F) as E'.
   generalize dependent F. generalize dependent E.
   induction H; intros.
   apply empty_concat_inv in HeqE'. intuition. subst.
@@ -80,7 +80,7 @@ Proof.
 Qed.
 
 Lemma wfenv_concat_inv : forall {A : Type} (P : A -> Prop) (E F : env A),
-  wfenv P (E & F) -> wfenv P E /\ wfenv P F.
+  wfenv P (E +&+ F) -> wfenv P E /\ wfenv P F.
 Proof.
   intros. generalize dependent E.
   induction F using env_ind; intros.
@@ -90,20 +90,20 @@ Proof.
 Qed.
 
 Lemma wfenv_concat_inv_l : forall {A : Type} (P : A -> Prop) (E F :env A),
-  wfenv P (E & F) -> wfenv P E.
+  wfenv P (E +&+ F) -> wfenv P E.
 Proof.
   intros. apply wfenv_concat_inv in H. intuition.
 Qed.
 
 Lemma wfenv_concat_inv_r : forall {A : Type} (P : A -> Prop) (E F :env A),
-  wfenv P (E & F) -> wfenv P F.
+  wfenv P (E +&+ F) -> wfenv P F.
 Proof.
   intros. apply wfenv_concat_inv in H. intuition.
 Qed.
 
 Lemma wfenv_exchange : forall {A : Type} (P : A -> Prop) (E : env A) (F : env A)
   (x : var) (y : var) (a : A) (b : A),
-  wfenv P (E & x ~ a & y ~ b & F) -> wfenv P (E & y ~ b & x ~ a & F).
+  wfenv P (E +&+ x ~ a +&+ y ~ b +&+ F) -> wfenv P (E +&+ y ~ b +&+ x ~ a +&+ F).
 Proof.
   induction F using env_ind; intros. try rewrite concat_empty_r in *.
   apply wfenv_push_inv in H; intuition.
@@ -148,7 +148,7 @@ Inductive relenv {A B : Type}
 | relenv_empty : forall P Q R, relenv P empty Q empty R
 | relenv_push : forall P E Q F R x a b,
     relenv P E Q F R -> x # E -> P a -> Q b -> R a b ->
-    relenv P (E & x ~ a) Q (F & x ~ b) R.
+    relenv P (E +&+ x ~ a) Q (F +&+ x ~ b) R.
 
 Hint Constructors relenv.
 
@@ -190,7 +190,7 @@ Qed.
 Lemma relenv_push_inv : forall {A B : Type}
   (P : A -> Prop) (E : env A) (Q : B -> Prop) (F : env B) (R : A -> B -> Prop)
   x a b,
-  relenv P (E & x ~ a) Q (F & x ~ b) R ->
+  relenv P (E +&+ x ~ a) Q (F +&+ x ~ b) R ->
   relenv P E Q F R /\ x # E /\ x # F /\ P a /\ Q b /\ R a b.
 Proof.
   intros. inversion H. apply empty_push_inv in H2. contradiction.
@@ -201,9 +201,9 @@ Qed.
 Lemma relenv_concat_dom : forall {A B : Type}
   (P : A -> Prop) (E E' : env A) (Q : B -> Prop) (F F' : env B)
   (R : A -> B -> Prop),
-  relenv P (E & E') Q (F & F') R -> dom E = dom F -> dom E' = dom F'.
+  relenv P (E +&+ E') Q (F +&+ F') R -> dom E = dom F -> dom E' = dom F'.
 Proof.
-  intros. remember (E & E') as EE. remember (F & F') as FF.
+  intros. remember (E +&+ E') as EE. remember (F +&+ F') as FF.
   generalize dependent E. generalize dependent F.
   generalize dependent E'. generalize dependent F'.
   induction H; intros.
@@ -214,10 +214,10 @@ Proof.
 Lemma relenv_concat_inv : forall {A B : Type}
   (P : A -> Prop) (E E' : env A) (Q : B -> Prop) (F F' : env B)
   (R : A -> B -> Prop),
-  relenv P (E & E') Q (F & F') R -> dom E = dom F -> dom E' = dom F' ->
+  relenv P (E +&+ E') Q (F +&+ F') R -> dom E = dom F -> dom E' = dom F' ->
   relenv P E Q F R /\ relenv P E' Q F' R.
 Proof.
-  intros. remember (E & E') as EE. remember (F & F') as FF.
+  intros. remember (E +&+ E') as EE. remember (F +&+ F') as FF.
   generalize dependent E. generalize dependent F.
   generalize dependent E'. generalize dependent F'.
   induction H; intros.

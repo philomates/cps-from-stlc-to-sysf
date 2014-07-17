@@ -1,6 +1,6 @@
 (***************************************************************************
 * STLC (source language) properties                                        *
-* William J. Bowman, Phillip Mates & James T. Perconti                     *
+* William J. Bowman, Phillip Mates +&+ James T. Perconti                     *
 ***************************************************************************)
 
 Require Import LibWfenv Source_Definitions Core_Infrastructure.
@@ -67,10 +67,10 @@ Qed.
 (* Weakening for s_typing *)
 
 Lemma s_typing_weaken_generalized : forall E F G e s,
-  s_typing (E & G) e s -> wfenv s_type (E & F & G) ->
-  s_typing (E & F & G) e s.
+  s_typing (E +&+ G) e s -> wfenv s_type (E +&+ F +&+ G) ->
+  s_typing (E +&+ F +&+ G) e s.
 Proof.
-  intros. gen_eq K: (E & G). gen E F G.
+  intros. gen_eq K: (E +&+ G). gen E F G.
   induction H; intros; subst*.
   apply* s_typing_var. apply* binds_weaken. eapply wfenv_ok. eassumption.
   apply_fresh* s_typing_abs as x. apply_ih_bind* H0.
@@ -78,9 +78,9 @@ Proof.
 Qed.
 
 Lemma s_typing_weaken : forall G G' e s,
-  s_typing G e s -> wfenv s_type (G & G') -> s_typing (G & G') e s.
+  s_typing G e s -> wfenv s_type (G +&+ G') -> s_typing (G +&+ G') e s.
 Proof.
-  intros. rewrite <- (concat_empty_r (G & G')).
+  intros. rewrite <- (concat_empty_r (G +&+ G')).
   apply s_typing_weaken_generalized; rewrite* concat_empty_r.
 Qed.
 
@@ -159,7 +159,7 @@ Proof. inversion 1. assumption. Qed.
 Lemma s_typing_abs_inv : forall G e s1 s2,
   s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2) ->
   exists L, forall x, x \notinLN L ->
-  s_typing (G & x ~ s1) (s_open_ee_var e x) s2.
+  s_typing (G +&+ x ~ s1) (s_open_ee_var e x) s2.
 Proof. inversion 1. exists L. intros. apply* H4. Qed.
 
 Lemma s_typing_if_inv_test : forall G e1 e2 e3 s,

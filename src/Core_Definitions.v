@@ -3,16 +3,13 @@
  *   Defines: pre-types (typ), pre-terms (trm),             *
  *            substitution for free/bound vars (open/subst) *
  *            pre-contexts (ctx), plug, ctx_open, ctx_subst *
- * from Ahmed & Blume ICFP 2011                             *
- * William J. Bowman, Phillip Mates & James T. Perconti     *
+ * from Ahmed +&+ Blume ICFP 2011                             *
+ * William J. Bowman, Phillip Mates +&+ James T. Perconti     *
  ************************************************************)
 
 Require Import ssreflect ssrnat eqtype.
-(* Require Export LibLN.
+Require Export LibLN.
 Require Import EqNat. 
-*)
-
-Definition var := nat. 
 
 Implicit Type x : var.
 Implicit Type X : var.

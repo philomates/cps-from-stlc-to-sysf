@@ -1,6 +1,6 @@
 (*****************************************************************************
  * Extension to TLC's LibEnv.ok to allow checking stronger properties of env *
- * William J. Bowman, Phillip Mates & James T. Perconti                      *
+ * William J. Bowman, Phillip Mates +&+ James T. Perconti                      *
  *****************************************************************************)
 
 Require Export LibEnv.
@@ -140,7 +140,7 @@ Proof.
 Qed.
 
 Lemma wfenv_push : forall {A : Type} (P : A -> Prop) (E : env A) x v,
-  wfenv P E -> x # E -> P v -> wfenv P (E & x ~ v).
+  wfenv P E -> x # E -> P v -> wfenv P (E +&+ x ~ v).
 Proof.
   unfold wfenv. split.
   apply ok_push; intuition.
@@ -149,7 +149,7 @@ Proof.
 Qed.
 
 Lemma wfenv_push_inv : forall {A : Type} (P : A -> Prop) (E : env A) x v,
-  wfenv P (E & x ~ v) -> wfenv P E /\ x # E /\ P v.
+  wfenv P (E +&+ x ~ v) -> wfenv P E /\ x # E /\ P v.
 Proof.
   unfold wfenv. intuition. apply (H1 x0).
   apply binds_push_neq; auto. intro contra. subst.
@@ -159,7 +159,7 @@ Proof.
 Qed.
 
 Lemma wfenv_push_inv_wfenv : forall {A : Type} (P : A -> Prop) (E : env A) x v,
-  wfenv P (E & x ~ v) -> wfenv P E.
+  wfenv P (E +&+ x ~ v) -> wfenv P E.
 Proof.
   intros. remember (wfenv_push_inv P E x v H) as H'. destruct H'. auto.
 Qed.
@@ -167,10 +167,10 @@ Qed.
 Hint Resolve wfenv_push_inv_wfenv.
 
 Lemma wfenv_concat_inv : forall {A : Type} (P : A -> Prop) (E F : env A),
-  wfenv P (E & F) -> wfenv P E /\ wfenv P F.
+  wfenv P (E +&+ F) -> wfenv P E /\ wfenv P F.
 Proof.
   intros. generalize dependent F.
-  apply (env_ind (fun F => wfenv P (E & F) -> wfenv P E /\ wfenv P F)).
+  apply (env_ind (fun F => wfenv P (E +&+ F) -> wfenv P E /\ wfenv P F)).
   rewrite concat_empty_r. intuition. apply wfenv_empty.
   intros. rewrite concat_assoc in H0. apply wfenv_push_inv in H0.
   destruct H0. apply H in H0. split; intuition.
@@ -178,13 +178,13 @@ Proof.
 Qed.
 
 Lemma wfenv_concat_inv_l :  forall {A : Type} (P : A -> Prop) (E F : env A),
-  wfenv P (E & F) -> wfenv P E.
+  wfenv P (E +&+ F) -> wfenv P E.
 Proof.
   intros. remember (wfenv_concat_inv P E F H) as H'. destruct H'. auto.
 Qed.
 
 Lemma wfenv_concat_inv_r :  forall {A : Type} (P : A -> Prop) (E F : env A),
-  wfenv P (E & F) -> wfenv P F.
+  wfenv P (E +&+ F) -> wfenv P F.
 Proof.
   intros. remember (wfenv_concat_inv P E F H) as H'. destruct H'. auto.
 Qed.
@@ -192,7 +192,7 @@ Qed.
 Lemma wfenv_ind : forall {A : Type} (P : A -> Prop) (Q : env A -> Prop),
   Q empty ->
   (forall (E : env A) (x : var) (v : A),
-    wfenv P E -> Q E -> x # E -> P v -> Q (E & x ~ v)) ->
+    wfenv P E -> Q E -> x # E -> P v -> Q (E +&+ x ~ v)) ->
   forall (E : env A), wfenv P E -> Q E.
 Proof.
   intros A P Q H H' E. apply (env_ind (fun E => wfenv P E -> Q E)); auto.
@@ -208,7 +208,7 @@ Qed.
 
 Lemma wfenv_exchange : forall {A : Type} (P : A -> Prop) (E : env A) (F : env A)
   (x : var) (y : var) (a : A) (b : A),
-  wfenv P (E & x ~ a & y ~ b & F) -> wfenv P (E & y ~ b & x ~ a & F).
+  wfenv P (E +&+ x ~ a +&+ y ~ b +&+ F) -> wfenv P (E +&+ y ~ b +&+ x ~ a +&+ F).
 Proof.
   induction F using env_ind; intros. try rewrite concat_empty_r in *.
   apply wfenv_push_inv in H. apply wfenv_push; intuition;
@@ -253,7 +253,7 @@ Lemma relenv_push : forall {A B : Type}
   (P : A -> Prop) (E : env A) (Q : B -> Prop) (F : env B) (R : A -> B -> Prop)
   (x : var) (a : A) (b : B),
   relenv P E Q F R -> x # E -> P a -> Q b -> R a b ->
-  relenv P (E & x ~ a) Q (F & x ~ b) R.
+  relenv P (E +&+ x ~ a) Q (F +&+ x ~ b) R.
 Proof.
   unfold relenv. intuition.
   repeat rewrite dom_concat. repeat rewrite dom_single. rewrite H4. reflexivity.
@@ -265,7 +265,7 @@ Qed.
 
 Lemma relenv_concat_inv : forall {A B : Type}
   (P : A -> Prop) (E E' : env A) (Q : B -> Prop) (F F' : env B) (R : A -> B -> Prop),
-  relenv P (E & E') Q (F & F') R -> dom E = dom F -> dom E' = dom F' ->
+  relenv P (E +&+ E') Q (F +&+ F') R -> dom E = dom F -> dom E' = dom F' ->
   relenv P E Q F R /\ relenv P E' Q F' R.
 Proof.
   unfold relenv. intros. intuition;
@@ -301,7 +301,7 @@ Qed.
 Lemma relenv_exchange_1 : forall {A B : Type}
   (P : A -> Prop) (E : env A) (E' : env A) (Q : B -> Prop) (F : env B) (R : A -> B -> Prop)
   (x y : var) (a a' : A),
-  relenv P (E & x ~ a & y ~ a' & E') Q F R -> relenv P (E & y ~ a' & x ~ a & E') Q F R.
+  relenv P (E +&+ x ~ a +&+ y ~ a' +&+ E') Q F R -> relenv P (E +&+ y ~ a' +&+ x ~ a +&+ E') Q F R.
 Proof.
   unfold relenv. intuition. repeat rewrite dom_concat in *.
   rewrite <- union_assoc with (E := dom E) in *.
@@ -316,10 +316,10 @@ Qed.
 (* Lemma relenv_find : forall {A B : Type}
   (P : A -> Prop) (Q : B -> Prop) (R : A -> B -> Prop) (E : env A) (F : env B),
   (forall (x : var) (b : B),
-    relenv P E Q (F & x ~ b) R -> exists E', exists a,
+    relenv P E Q (F +&+ x ~ b) R -> exists E', exists a,
       binds x a E /\ P a /\ relenv P E' Q F R /\ R a b) /\
   (forall (x : var) (a : A),
-    relenv P (E & x ~ a) Q F R -> exists F', exists b,
+    relenv P (E +&+ x ~ a) Q F R -> exists F', exists b,
       binds x b F /\ Q b /\ relenv P E Q F' R /\ R a b).
 Proof.
   intros. induction E using env_ind; induction F using env_ind; split; intros.
@@ -353,7 +353,7 @@ Lemma relenv_ind : forall {A B : Type} (P : A -> Prop) (Q : B -> Prop) (R : A ->
   goal empty empty ->
   (forall (E : env A) (F : env B) (x : var) (a : A) (b : B),
     relenv P E Q F R -> goal E F -> x # E -> P a -> Q b -> R a b ->
-    goal (E & x ~ a) (F & x ~ b)) ->
+    goal (E +&+ x ~ a) (F +&+ x ~ b)) ->
   forall (E : env A) (F : env B), relenv P E Q F R -> goal E F.
 Proof.
   intros.

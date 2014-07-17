@@ -1,6 +1,6 @@
 (***************************************************************************
-* STLC (source language) definitions From Ahmed & Blume ICFP 2011          *
-* William J. Bowman, Phillip Mates & James T. Perconti                     *
+* STLC (source language) definitions From Ahmed +&+ Blume ICFP 2011          *
+* William J. Bowman, Phillip Mates +&+ James T. Perconti                     *
 ***************************************************************************)
 
 Require Import Core_Definitions LibWfenv.
@@ -103,7 +103,7 @@ Inductive s_typing : env_term -> trm -> typ -> Prop :=
   | s_typing_false : forall G,
       wfenv s_type G -> s_typing G s_trm_false s_typ_bool
   | s_typing_abs : forall L G e s1 s2,
-      (forall x, x \notinLN L -> s_typing (G & x ~ s1) (s_open_ee_var e x) s2) ->
+      (forall x, x \notinLN L -> s_typing (G +&+ x ~ s1) (s_open_ee_var e x) s2) ->
       (s_type s1) ->
       s_typing G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
   | s_typing_if : forall G e1 e2 e3 s,
@@ -156,9 +156,9 @@ Inductive s_context : ctx -> Prop :=
 Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
   : ctx -> env_term -> typ -> env_term -> typ -> Prop :=
   | s_context_typing_hole : forall G_hole s_hole G,
-      wfenv s_type G_hole -> wfenv s_type (G_hole & G) ->
+      wfenv s_type G_hole -> wfenv s_type (G_hole +&+ G) ->
       s_type s_hole ->
-      s_context_typing s_ctx_hole G_hole s_hole (G_hole & G) s_hole
+      s_context_typing s_ctx_hole G_hole s_hole (G_hole +&+ G) s_hole
   | s_context_typing_if : forall C G_hole s_hole G e2 e3 s,
       s_context_typing C G_hole s_hole G s_typ_bool ->
       s_typing G e2 s -> s_typing G e3 s ->
@@ -174,7 +174,7 @@ Inductive s_context_typing (* |- C : G |- s ~> G' |- s' *)
   | s_context_typing_abs : forall L C G_hole s_hole G s s',
       (forall x, x \notinLN L -> s_context_typing (s_ctx_open_ee_var C x)
                                                 G_hole s_hole
-                                                (G & x ~ s) s') ->
+                                                (G +&+ x ~ s) s') ->
       s_type s ->
       s_context_typing (s_ctx_abs s C) G_hole s_hole G (s_typ_arrow s s')
   | s_context_typing_if_true : forall C G_hole s_hole G e1 e3 s,

@@ -61,7 +61,7 @@ Hint Local Resolve
 
 Ltac prove_app :=
   match goal with
-    | [ |- t_typing (empty & ?X ~ star) _ (t_trm_app _ _ _) _] =>
+    | [ |- t_typing (empty +&+ ?X ~ star) _ (t_trm_app _ _ _) _] =>
       replace (t_typ_fvar X) with (open_tt (t_typ_fvar X) dummy_type); auto;
       apply* t_typing_app end.
 

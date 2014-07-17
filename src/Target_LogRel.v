@@ -61,11 +61,11 @@ Program Fixpoint interpV (t : typ) (rho : relat_env) (a : atom)
           forall t1 t2 R u1 u2,
             Rel t1 t2 R ->
             exists L, forall X, X \notinLN L ->
-              interpV (open_tt_var t' X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
-              termrel (subst1_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
-                      (subst2_tt (rho & X ~ (t1, t2, R)) (open_tt_var t'' X))
+              interpV (open_tt_var t' X) (rho +&+ X ~ (t1, t2, R)) (u1, u2) ->
+              termrel (subst1_tt (rho +&+ X ~ (t1, t2, R)) (open_tt_var t'' X))
+                      (subst2_tt (rho +&+ X ~ (t1, t2, R)) (open_tt_var t'' X))
                       (fun a =>
-                        interpV (open_tt_var t'' X) (rho & X ~ (t1, t2, R)) a)
+                        interpV (open_tt_var t'' X) (rho +&+ X ~ (t1, t2, R)) a)
                       (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2)
       | _ => False
     end. 
@@ -114,8 +114,8 @@ Lemma interpV_arrow : forall t t' rho a,
   (forall t1 t2 R u1 u2,
     Rel t1 t2 R ->
     exists L, forall X, X \notinLN L ->
-      interpV (open_tt_var t X) (rho & X ~ (t1, t2, R)) (u1, u2) ->
-      interpE (open_tt_var t' X) (rho & X ~ (t1, t2, R))
+      interpV (open_tt_var t X) (rho +&+ X ~ (t1, t2, R)) (u1, u2) ->
+      interpE (open_tt_var t' X) (rho +&+ X ~ (t1, t2, R))
               (t_trm_app (fst a) t1 u1, t_trm_app (snd a) t2 u2)).
 Proof.
   split; intros.
@@ -183,24 +183,24 @@ Proof.
 Qed.
 
 Lemma interpE_weaken_generalized : forall D D' t rho rho' X RR,
-  t_wft (D & D') t -> rho \inLN D[[ D ]] -> rho' \inLN D[[ D' ]] ->
-  X \notinLN dom (D & D') ->
-  (forall a, a \inLN V[[ t ]](rho & rho') <-> a \inLN V[[ t ]](rho & X ~ RR & rho')) ->
-  forall a,  a \inLN E[[ t ]](rho & rho') <-> a \inLN E[[ t ]](rho & X ~ RR & rho').
+  t_wft (D +&+ D') t -> rho \inLN D[[ D ]] -> rho' \inLN D[[ D' ]] ->
+  X \notinLN dom (D +&+ D') ->
+  (forall a, a \inLN V[[ t ]](rho +&+ rho') <-> a \inLN V[[ t ]](rho +&+ X ~ RR +&+ rho')) ->
+  forall a,  a \inLN E[[ t ]](rho +&+ rho') <-> a \inLN E[[ t ]](rho +&+ X ~ RR +&+ rho').
 Proof.
   unfold interpE. intros. unfold subst1_tt. unfold subst2_tt.
   repeat rewrite map_concat. repeat rewrite map_single. repeat rewrite subst_tt_weaken;
-  try (intro; apply (t_wft_fv_tt t (D & D')) in H4; auto).
+  try (intro; apply (t_wft_fv_tt t (D +&+ D')) in H4; auto).
   unfold termrel. split; split; intuition;
   destruct (H6 v1 H4) as [v2]; exists v2; intuition. rewrite* <- H3. rewrite* H3.
 Qed.
 
 Lemma interpV_weaken_generalized : forall D D' t rho rho' X t1 t2 R a,
-  t_wft (D & D') t -> (rho & rho') \inLN D[[ D & D' ]] -> dom rho = dom D -> dom rho' = dom D' ->
+  t_wft (D +&+ D') t -> (rho +&+ rho') \inLN D[[ D +&+ D' ]] -> dom rho = dom D -> dom rho' = dom D' ->
   Rel t1 t2 R -> X # D -> X # D' ->
-  (a \inLN V[[ t ]](rho & rho') <-> a \inLN V[[ t ]](rho & X ~ (t1, t2, R) & rho')).
+  (a \inLN V[[ t ]](rho +&+ rho') <-> a \inLN V[[ t ]](rho +&+ X ~ (t1, t2, R) +&+ rho')).
 Proof.
-  intros. remember (D & D') as D0. gen D D' rho rho' X t1 t2 R a.
+  intros. remember (D +&+ D') as D0. gen D D' rho rho' X t1 t2 R a.
   induction H; split; intros; subst.
   (* var *)
   rewrite interpV_var. rewrite interpV_var in H7. destruct H7 as [RR]. exists RR. intuition.
@@ -230,7 +230,7 @@ Proof.
       rewrite concat_assoc. apply ok_push.
 
           
-        apply IHrho' with (D' := D' & x ~ star). *)
+        apply IHrho' with (D' := D' +&+ x ~ star). *)
       
   rewrite interpV_var. rewrite interpV_var in H5. destruct H5 as [RR]. exists RR. intuition.
     apply binds_middle_inv in H6. intuition.
@@ -261,13 +261,13 @@ Proof.
     repeat rewrite subst_tt_weaken; intuition.*)
   rewrite interpV_arrow in H7. destruct H7.
   intros. destruct (H8 t4 t5 R0 u1 u2 H9) as [L'].
-  exists (L \u L' \u dom (rho & X ~ (t0, t3, R) & rho')). intros.
+  exists (L \u L' \u dom (rho +&+ X ~ (t0, t3, R) +&+ rho')). intros.
   rewrite <- concat_assoc.
-  rewrite <- (interpE_weaken_generalized D0 (D' & X0 ~ star)).
+  rewrite <- (interpE_weaken_generalized D0 (D' +&+ X0 ~ star)).
   (* the interesting premise *)
   rewrite concat_assoc. apply* H10.
   rewrite <- concat_assoc.
-  rewrite H0 with (D := D0) (D'0 := D' & X0 ~ star); auto using concat_assoc.
+  rewrite H0 with (D := D0) (D'0 := D' +&+ X0 ~ star); auto using concat_assoc.
   rewrite concat_assoc. apply H12.
     (* "easy" premises of IH for t1 *)
     apply relenv_push; auto. skip. (* TODO fix freshness premise *)
@@ -278,7 +278,7 @@ Proof.
   auto.
   apply relenv_push; auto. skip. (* TODO fix freshness premise *)
   skip. (* TODO make freshness premises of interpE_weaken less annoying*)
-  apply H2 with (D := D0) (D'0 := D' & X0 ~ star); auto. rewrite* concat_assoc.
+  apply H2 with (D := D0) (D'0 := D' +&+ X0 ~ star); auto. rewrite* concat_assoc.
   apply relenv_push; auto. skip. (* TODO fix freshness premise *)
   rewrite concat_assoc. apply* ok_push.
 
@@ -326,9 +326,9 @@ Proof.
 Qed.
 
 Lemma interpV_substitution : forall D X t t' rho a,
-  t_wft (D & X ~ star) t -> t_wft D t' -> rho \inLN D[[ D ]] ->
+  t_wft (D +&+ X ~ star) t -> t_wft D t' -> rho \inLN D[[ D ]] ->
   (a \inLN V[[ subst_tt (X ~ t') t ]]rho <->
-   a \inLN V[[ t ]](rho & (X ~ (subst1_tt rho t', subst2_tt rho t', V[[ t' ]] rho)))).
+   a \inLN V[[ t ]](rho +&+ (X ~ (subst1_tt rho t', subst2_tt rho t', V[[ t' ]] rho)))).
 Proof.
   induction 1; split; intros; simpl in *.
 

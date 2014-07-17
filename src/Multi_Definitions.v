@@ -1,6 +1,6 @@
 (**************************************************************************
-* Multi-Language definitions From Ahmed & Blume ICFP 2011                 *
-* William J. Bowman, Phillip Mates & James T. Perconti                    *
+* Multi-Language definitions From Ahmed +&+ Blume ICFP 2011                 *
+* William J. Bowman, Phillip Mates +&+ James T. Perconti                    *
 ***************************************************************************)
 Require Import Core_Definitions Source_Definitions Target_Definitions 
                LibWfenv Cps_Trans_Definitions.
@@ -114,7 +114,7 @@ Inductive st_typing : env_type -> env_term -> trm -> typ -> Prop :=
     st_typing D G m (s+) -> st_typing D G (s_trm_st m s) s
 | st_boundary_ts_typing : forall L D G e m s t,
     st_typing D G e s -> 
-    (forall x, x \notinLN L -> st_typing D (G & x ~ (s+)) (t_open_ee_var m x) t) ->
+    (forall x, x \notinLN L -> st_typing D (G +&+ x ~ (s+)) (t_open_ee_var m x) t) ->
     st_typing D G (t_trm_ts e s m) t.
 
 (* Examples *)

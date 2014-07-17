@@ -4,8 +4,8 @@
 
 (***************************************************************************
 * Preservation and Progress for CPS System-F - Infrastructure              *
-* Target language present in Ahmed & Blume ICFP 2011   
-* William J. Bowman, Phillip Mates & James T. Perconti                     *
+* Target language present in Ahmed +&+ Blume ICFP 2011   
+* William J. Bowman, Phillip Mates +&+ James T. Perconti                     *
 ***************************************************************************)
 
 Set Implicit Arguments.
@@ -137,7 +137,7 @@ Tactic Notation "apply_fresh" "*" constr(T) "as" ident(x) :=
   apply_fresh T as x; auto*.
 
 (** These tactics help applying a lemma which conclusion mentions
-  an environment (E & F) in the particular case when F is empty *)
+  an environment (E +&+ F) in the particular case when F is empty *)
 
 Ltac get_env_type :=
   match goal with
@@ -510,11 +510,11 @@ Qed.
 (** Through weakening *)
 
 Lemma wft_weaken : forall G T E F,
-  wft (E & G) T ->
-  ok (E & F & G) ->
-  wft (E & F & G) T.
+  wft (E +&+ G) T ->
+  ok (E +&+ F +&+ G) ->
+  wft (E +&+ F +&+ G) T.
 Proof.
-  intros. gen_eq K: (E & G). gen E F G.
+  intros. gen_eq K: (E +&+ G). gen E F G.
   induction H; intros; subst; eauto.
   (* case: var *)
   apply wft_var. apply* binds_weaken.
@@ -526,15 +526,15 @@ Qed.
 (** Through strengthening: only used for subtyping... *)
 
 (* Lemma wft_strengthen : forall E F X T, *)
-(*  wft (E & X ~ star & F) T -> wft (E & F) T. *)
+(*  wft (E +&+ X ~ star +&+ F) T -> wft (E +&+ F) T. *)
 
 (** Through type substitution: only used for subtyping...*)
 
 (* Lemma wft_subst_tb : forall F Q E Z P T, *)
-(*   wft (E & Z ~<: Q & F) T -> *)
+(*   wft (E +&+ Z ~<: Q +&+ F) T -> *)
 (*   wft E P -> *)
-(*   ok (E & map (subst_tt Z P) F) -> *)
-(*   wft (E & map (subst_tt Z P) F) (subst_tt Z P T). *)
+(*   ok (E +&+ map (subst_tt Z P) F) -> *)
+(*   wft (E +&+ map (subst_tt Z P) F) (subst_tt Z P T). *)
 
 
 (** Through type reduction *)
@@ -612,7 +612,7 @@ Qed.
 (** Extraction from a well-formed environment *)
 
 Lemma wft_from_okt_typ : forall x T E,
-  okt (E & x ~: T) -> wft E T.
+  okt (E +&+ x ~: T) -> wft E T.
 Proof.
   intros. inversions* H.
   false (empty_push_inv H1).
@@ -621,7 +621,7 @@ Proof.
 Qed.
 
 Lemma wft_from_okt_sub : forall x T E,
-  okt (E & x ~<: T) -> wft E T.
+  okt (E +&+ x ~<: T) -> wft E T.
 Proof.
   intros. inversions* H.
   false (empty_push_inv H1).
@@ -633,8 +633,8 @@ Qed.
 
 Lemma wft_weaken_right : forall T E F,
   wft E T ->
-  ok (E & F) ->
-  wft (E & F) T.
+  ok (E +&+ F) ->
+  wft (E +&+ F) T.
 Proof.
   intros. apply_empty* wft_weaken.
 Qed.
@@ -651,38 +651,38 @@ Hint Resolve wft_subst_tb.
 (** Inversion lemma *)
 
 Lemma okt_push_inv : forall E X B,
-  okt (E & X ~ B) -> exists T, B = bind_sub T \/ B = bind_typ T.
+  okt (E +&+ X ~ B) -> exists T, B = bind_sub T \/ B = bind_typ T.
 Proof.
   introv O. inverts O.
     false* empty_push_inv.
-    lets (?&?&?): (eq_push_inv H). subst*.
-    lets (?&?&?): (eq_push_inv H). subst*.
+    lets (?+&+?&?): (eq_push_inv H). subst*.
+    lets (?+&+?&?): (eq_push_inv H). subst*.
 Qed.
 
 Lemma okt_push_sub_inv : forall E X T,
-  okt (E & X ~<: T) -> okt E /\ wft E T /\ X # E.
+  okt (E +&+ X ~<: T) -> okt E /\ wft E T /\ X # E.
 Proof.
   introv O. inverts O.
     false* empty_push_inv.
-    lets (?&M&?): (eq_push_inv H). subst. inverts~ M.
-    lets (?&?&?): (eq_push_inv H). false.
+    lets (?+&+M&?): (eq_push_inv H). subst. inverts~ M.
+    lets (?+&+?&?): (eq_push_inv H). false.
 Qed.
 
 Lemma okt_push_sub_type : forall E X T,
-  okt (E & X ~<: T) -> type T.
+  okt (E +&+ X ~<: T) -> type T.
 Proof. intros. applys wft_type. forwards*: okt_push_sub_inv. Qed.
 
 Lemma okt_push_typ_inv : forall E x T,
-  okt (E & x ~: T) -> okt E /\ wft E T /\ x # E.
+  okt (E +&+ x ~: T) -> okt E /\ wft E T /\ x # E.
 Proof.
   introv O. inverts O.
     false* empty_push_inv.
-    lets (?&?&?): (eq_push_inv H). false.
-    lets (?&M&?): (eq_push_inv H). subst. inverts~ M.
+    lets (?+&+?&?): (eq_push_inv H). false.
+    lets (?+&+M&?): (eq_push_inv H). subst. inverts~ M.
 Qed.
 
 Lemma okt_push_typ_type : forall E X T,
-  okt (E & X ~: T) -> type T.
+  okt (E +&+ X ~: T) -> type T.
 Proof. intros. applys wft_type. forwards*: okt_push_typ_inv. Qed.
 
 Hint Immediate okt_push_sub_type okt_push_typ_type.
@@ -690,51 +690,51 @@ Hint Immediate okt_push_sub_type okt_push_typ_type.
 (** Through narrowing *)
 
 Lemma okt_narrow : forall V (E F:env) U X,
-  okt (E & X ~<: V & F) ->
+  okt (E +&+ X ~<: V +&+ F) ->
   wft E U ->
-  okt (E & X ~<: U & F).
+  okt (E +&+ X ~<: U +&+ F).
 Proof.
   introv O W. induction F using env_ind.
   rewrite concat_empty_r in *. lets*: (okt_push_sub_inv O).
   rewrite concat_assoc in *.
-   lets (T&[?|?]): okt_push_inv O; subst.
-     lets (?&?&?): (okt_push_sub_inv O).
+   lets (T+&+[?|?]): okt_push_inv O; subst.
+     lets (?+&+?&?): (okt_push_sub_inv O).
       applys~ okt_sub. applys* wft_narrow.
-     lets (?&?&?): (okt_push_typ_inv O).
+     lets (?+&+?&?): (okt_push_typ_inv O).
       applys~ okt_typ. applys* wft_narrow.
 Qed.
 
 (** Through strengthening *)
 
 Lemma okt_strengthen : forall x T (E F:env),
-  okt (E & x ~: T & F) ->
-  okt (E & F).
+  okt (E +&+ x ~: T +&+ F) ->
+  okt (E +&+ F).
 Proof.
  introv O. induction F using env_ind.
   rewrite concat_empty_r in *. lets*: (okt_push_typ_inv O).
   rewrite concat_assoc in *.
-   lets (U&[?|?]): okt_push_inv O; subst.
-     lets (?&?&?): (okt_push_sub_inv O).
+   lets (U+&+[?|?]): okt_push_inv O; subst.
+     lets (?+&+?&?): (okt_push_sub_inv O).
       applys~ okt_sub. applys* wft_strengthen.
-     lets (?&?&?): (okt_push_typ_inv O).
+     lets (?+&+?&?): (okt_push_typ_inv O).
       applys~ okt_typ. applys* wft_strengthen.
 Qed.
 
 (** Through type substitution *)
 
 Lemma okt_subst_tb : forall Q Z P (E F:env),
-  okt (E & Z ~<: Q & F) ->
+  okt (E +&+ Z ~<: Q +&+ F) ->
   wft E P ->
-  okt (E & map (subst_tt Z P) F).
+  okt (E +&+ map (subst_tt Z P) F).
 Proof.
  introv O W. induction F using env_ind.
   rewrite map_empty. rewrite concat_empty_r in *.
    lets*: (okt_push_sub_inv O).
   rewrite map_push. rewrite concat_assoc in *.
-   lets (U&[?|?]): okt_push_inv O; subst.
-     lets (?&?&?): (okt_push_sub_inv O).
+   lets (U+&+[?|?]): okt_push_inv O; subst.
+     lets (?+&+?&?): (okt_push_sub_inv O).
       applys~ okt_sub. applys* wft_subst_tb.
-     lets (?&?&?): (okt_push_typ_inv O).
+     lets (?+&+?&?): (okt_push_typ_inv O).
       applys~ okt_typ. applys* wft_subst_tb.
 Qed.
 

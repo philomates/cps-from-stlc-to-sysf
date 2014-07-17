@@ -41,7 +41,7 @@ Inductive cps_trans : env_term -> trm -> typ -> trm -> Prop :=
         (t_trm_app (t_trm_bvar 0) dummy_type t_trm_false))
   | cps_trans_abs : forall L G e s1 s2 u,
       (forall x, x \notinLN L ->
-        cps_trans (G & x ~ s1) (s_open_ee_var e x) s2 (open_ee_rec target 1 (t_trm_fvar x) u)) ->
+        cps_trans (G +&+ x ~ s1) (s_open_ee_var e x) s2 (open_ee_rec target 1 (t_trm_fvar x) u)) ->
       s_type s1 ->
       cps_trans G (s_trm_abs s1 e) (s_typ_arrow s1 s2)
         (t_trm_abs (*A*)
@@ -97,7 +97,7 @@ match e with
   (* TODO: write a type inferencer to get s2 *)
   let s2 := s_dummy_type in
   let x := var_gen (fv_ee source bdy) in
-  let v := cps_term_trans (G & x ~ s1) (s_open_ee_var bdy x) in
+  let v := cps_term_trans (G +&+ x ~ s1) (s_open_ee_var bdy x) in
   (* λ [α] k:((σ1 → σ2)+ → α) . *)
   (t_trm_abs (t_typ_arrow (cps_type_trans (s_typ_arrow s1 s2)) (t_typ_bvar 0))
     (* k [_] ... *)

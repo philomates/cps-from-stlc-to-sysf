@@ -1,6 +1,6 @@
 (***************************************************************************
 * Basic properties of target language                                      *
-* William J. Bowman, Phillip Mates & James T. Perconti                     *
+* William J. Bowman, Phillip Mates +&+ James T. Perconti                     *
 ***************************************************************************)
 
 Require Import LibWfenv Target_Definitions Core_Infrastructure.
@@ -12,7 +12,7 @@ Require Import LibWfenv Target_Definitions Core_Infrastructure.
 Lemma t_wft_implies_ok : forall D t, t_wft D t -> ok D.
 Proof.
   induction 1; auto.
-  pick_fresh X. assert (ok (D & X ~ star)); auto.
+  pick_fresh X. assert (ok (D +&+ X ~ star)); auto.
 Qed.
 
 Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
@@ -22,24 +22,24 @@ Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 (* Weakening for t_wft *)
 
 Lemma t_wft_weaken_generalized : forall G T E F,
-  t_wft (E & G) T -> ok (E & F & G) ->
-  t_wft (E & F & G) T.
+  t_wft (E +&+ G) T -> ok (E +&+ F +&+ G) ->
+  t_wft (E +&+ F +&+ G) T.
 Proof.
-  intros. gen_eq K: (E & G). gen E F G.
+  intros. gen_eq K: (E +&+ G). gen E F G.
   induction H; intros; subst; eauto.
   apply* t_wft_var. apply* binds_weaken.
   apply_fresh* t_wft_arrow as Y. apply_ih_bind* H0. apply_ih_bind* H2.
 Qed.
 
 Lemma t_wft_weaken : forall T E F,
-  t_wft E T -> ok (E & F) -> t_wft (E & F) T.
+  t_wft E T -> ok (E +&+ F) -> t_wft (E +&+ F) T.
 Proof.
-  intros. rewrite <- (concat_empty_r (E & F)).
+  intros. rewrite <- (concat_empty_r (E +&+ F)).
   apply t_wft_weaken_generalized; rewrite* concat_empty_r.
 Qed.
 
 Lemma wfenv_t_wft_weaken : forall D X G,
-  wfenv (t_wft D) G -> ok (D & X ~ star) -> wfenv (t_wft (D & X ~ star)) G.
+  wfenv (t_wft D) G -> ok (D +&+ X ~ star) -> wfenv (t_wft (D +&+ X ~ star)) G.
 Proof.
   intros. apply* (wfenv_implies (t_wft D)). intros. apply* t_wft_weaken.
 Qed.
@@ -54,7 +54,7 @@ Proof.
   rewrite in_singleton in H1. subst. apply* get_some_inv.
   false. apply* in_empty_elim.
   rewrite in_union in H. intuition.
-  pick_fresh Y. assert (X \inLN dom (D & Y ~ star)).
+  pick_fresh Y. assert (X \inLN dom (D +&+ Y ~ star)).
     rewrite in_union in H3. destruct H3.
     assert (fv_tt (open_tt_var t1 Y) = fv_tt t1 \u \{Y} \/ fv_tt (open_tt_var t1 Y) = fv_tt t1).
       apply open_tt_var_fv_tt.
@@ -170,10 +170,10 @@ Qed.
 (* subst_tt preserves t_wft *)
 
 Lemma subst_tt_preserves_t_wft_generalized : forall D D' t X t',
-  X # (D & D') -> t_wft (D & D') t' -> t_wft (D & X ~ star & D') t ->
-  t_wft (D & D') (subst_tt (X ~ t') t).
+  X # (D +&+ D') -> t_wft (D +&+ D') t' -> t_wft (D +&+ X ~ star +&+ D') t ->
+  t_wft (D +&+ D') (subst_tt (X ~ t') t).
 Proof.
-  intros. gen_eq DXD' : (D & X ~ star & D'). gen D X D'.
+  intros. gen_eq DXD' : (D +&+ X ~ star +&+ D'). gen D X D'.
   induction H1; intros; subst; simpl; auto.
   rewrite get_single. cases_if*.
     apply* t_wft_var. apply* binds_subst.
@@ -185,12 +185,12 @@ Proof.
 Qed.
 
 Lemma subst_tt_preserves_t_wft : forall D t X t',
-  X # D -> t_wft D t' -> t_wft (D & X ~ star) t ->
+  X # D -> t_wft D t' -> t_wft (D +&+ X ~ star) t ->
   t_wft D (subst_tt (X ~ t') t).
 Proof.
   intros.
   rewrite <- (concat_empty_r D). rewrite <- (concat_empty_r D) in H0.
-  rewrite <- (concat_empty_r (D & X ~ star)) in H1.
+  rewrite <- (concat_empty_r (D +&+ X ~ star)) in H1.
   apply* subst_tt_preserves_t_wft_generalized.
 Qed.
 
@@ -209,7 +209,7 @@ Theorem t_typing_implies_ok : forall D G m t,
 Proof.
   apply (t_typing_mut (fun D G m t pf => ok D)
                       (fun D G u t pf => ok D)); auto.
-  intros. pick_fresh x. pick_fresh X. assert (ok (D & X ~ star)); auto.
+  intros. pick_fresh x. pick_fresh X. assert (ok (D +&+ X ~ star)); auto.
   apply* (H x X).
 Qed.
 
@@ -235,7 +235,7 @@ Proof.
                       (fun D G u t pf => t_value u)); eauto.
   intros. apply_fresh* t_value_abs as X.
   pick_fresh x.
-  assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
+  assert (wfenv (t_wft (D +&+ X ~ star)) (G +&+ x ~ open_tt t1 (t_typ_fvar X))).
     eapply t_typing_implies_wfenv. apply* t.
   apply wfenv_push_inv in H0. destructs* H0.
 Qed.
@@ -247,7 +247,7 @@ Proof.
                             (fun D G u t pf => t_value u)); eauto.
   intros. apply_fresh* t_value_abs as X.
   pick_fresh x.
-  assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt t1 (t_typ_fvar X))).
+  assert (wfenv (t_wft (D +&+ X ~ star)) (G +&+ x ~ open_tt t1 (t_typ_fvar X))).
     eapply t_typing_implies_wfenv. apply* t.
   apply wfenv_push_inv in H0. destructs* H0.
 Qed.
@@ -264,7 +264,7 @@ Proof.
   apply* t_wft_arrow_apply.
   apply* (wfenv_binds (t_wft D)).
   pick_fresh x. apply_fresh t_wft_arrow as X; try (apply* (H x X)).
-    assert (wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt_var t1 X)).
+    assert (wfenv (t_wft (D +&+ X ~ star)) (G +&+ x ~ open_tt_var t1 X)).
       apply* t_typing_implies_wfenv.
     apply wfenv_push_inv in H0. destructs* H0.
 Qed.
@@ -276,67 +276,67 @@ Proof. eauto using t_typing_implies_t_wft. Qed.
 (* weakening for t_typing *)
 
 Lemma t_typing_weaken_delta_generalized : forall D D' D'' G m t,
-  t_typing (D & D'') G m t -> ok (D & D' & D'') ->
-  t_typing (D & D' & D'') G m t.
+  t_typing (D +&+ D'') G m t -> ok (D +&+ D' +&+ D'') ->
+  t_typing (D +&+ D' +&+ D'') G m t.
 Proof.
-  intros. gen_eq DD : (D & D''). gen D D' D''.
+  intros. gen_eq DD : (D +&+ D''). gen D D' D''.
   apply (t_typing_mut
           (fun DD G m t pf =>
-            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
-            t_typing (D & D' & D'') G m t)
+            forall D D' D'', ok (D +&+ D' +&+ D'') -> DD = D +&+ D'' ->
+            t_typing (D +&+ D' +&+ D'') G m t)
           (fun DD G u t pf =>
-            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
-            t_value_typing (D & D' & D'') G u t));
+            forall D D' D'', ok (D +&+ D' +&+ D'') -> DD = D +&+ D'' ->
+            t_value_typing (D +&+ D' +&+ D'') G u t));
   intros; subst; auto using t_wft_weaken_generalized;
   try (pick_fresh x; apply_fresh t_value_typing_abs as X);
-  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 & D''))).
+  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 +&+ D''))).
   intros. apply_ih_bind* H0.
 Qed.
 
 Lemma t_value_typing_weaken_delta_generalized : forall D D' D'' G u t,
-  t_value_typing (D & D'') G u t -> ok (D & D' & D'') ->
-  t_value_typing (D & D' & D'') G u t.
+  t_value_typing (D +&+ D'') G u t -> ok (D +&+ D' +&+ D'') ->
+  t_value_typing (D +&+ D' +&+ D'') G u t.
 Proof.
-  intros. gen_eq DD : (D & D''). gen D D' D''.
+  intros. gen_eq DD : (D +&+ D''). gen D D' D''.
   apply (t_value_typing_mut
           (fun DD G m t pf =>
-            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
-            t_typing (D & D' & D'') G m t)
+            forall D D' D'', ok (D +&+ D' +&+ D'') -> DD = D +&+ D'' ->
+            t_typing (D +&+ D' +&+ D'') G m t)
           (fun DD G u t pf =>
-            forall D D' D'', ok (D & D' & D'') -> DD = D & D'' ->
-            t_value_typing (D & D' & D'') G u t));
+            forall D D' D'', ok (D +&+ D' +&+ D'') -> DD = D +&+ D'' ->
+            t_value_typing (D +&+ D' +&+ D'') G u t));
   intros; subst; auto using t_wft_weaken_generalized;
   try (pick_fresh x; apply_fresh t_value_typing_abs as X);
-  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 & D''))).
+  eauto using t_wft_weaken_generalized, (wfenv_implies (t_wft (D0 +&+ D''))).
   intros. apply_ih_bind* H0.
 Qed.
 
 Lemma t_typing_weaken_delta : forall D D' G m t,
-  t_typing D G m t -> ok (D & D') -> t_typing (D & D') G m t.
+  t_typing D G m t -> ok (D +&+ D') -> t_typing (D +&+ D') G m t.
 Proof.
-  intros. rewrite <- (concat_empty_r (D & D')) in *.
+  intros. rewrite <- (concat_empty_r (D +&+ D')) in *.
   apply* t_typing_weaken_delta_generalized. rewrite* concat_empty_r.
 Qed.
 
 Lemma t_value_typing_weaken_delta : forall D D' G u t,
-  t_value_typing D G u t -> ok (D & D') -> t_value_typing (D & D') G u t.
+  t_value_typing D G u t -> ok (D +&+ D') -> t_value_typing (D +&+ D') G u t.
 Proof.
-  intros. rewrite <- (concat_empty_r (D & D')) in *.
+  intros. rewrite <- (concat_empty_r (D +&+ D')) in *.
   apply* t_value_typing_weaken_delta_generalized. rewrite* concat_empty_r.
 Qed.
 
 Lemma t_typing_weaken_generalized : forall D G G' G'' m t,
-  t_typing D (G & G'') m t -> wfenv (t_wft D) (G & G' & G'') ->
-  t_typing D (G & G' & G'') m t.
+  t_typing D (G +&+ G'') m t -> wfenv (t_wft D) (G +&+ G' +&+ G'') ->
+  t_typing D (G +&+ G' +&+ G'') m t.
 Proof.
-  intros. gen_eq GG : (G & G''). gen G G' G''.
+  intros. gen_eq GG : (G +&+ G''). gen G G' G''.
   apply (t_typing_mut
           (fun D GG m t pf =>
-            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
-            t_typing D (G & G' & G'') m t)
+            forall G G' G'', wfenv (t_wft D) (G +&+ G' +&+ G'') -> GG = G +&+ G'' ->
+            t_typing D (G +&+ G' +&+ G'') m t)
           (fun D GG u t pf =>
-            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
-            t_value_typing D (G & G' & G'') u t));
+            forall G G' G'', wfenv (t_wft D) (G +&+ G' +&+ G'') -> GG = G +&+ G'' ->
+            t_value_typing D (G +&+ G' +&+ G'') u t));
   intros; subst; eauto.
   apply_fresh* t_typing_let_fst as x. apply_ih_bind* H1.
     apply wfenv_push; auto.
@@ -352,17 +352,17 @@ Proof.
 Qed.
 
 Lemma t_value_typing_weaken_generalized : forall D G G' G'' u t,
-  t_value_typing D (G & G'') u t -> wfenv (t_wft D) (G & G' & G'') ->
-  t_value_typing D (G & G' & G'') u t.
+  t_value_typing D (G +&+ G'') u t -> wfenv (t_wft D) (G +&+ G' +&+ G'') ->
+  t_value_typing D (G +&+ G' +&+ G'') u t.
 Proof.
-  intros. gen_eq GG : (G & G''). gen G G' G''.
+  intros. gen_eq GG : (G +&+ G''). gen G G' G''.
   apply (t_value_typing_mut
           (fun D GG m t pf =>
-            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
-            t_typing D (G & G' & G'') m t)
+            forall G G' G'', wfenv (t_wft D) (G +&+ G' +&+ G'') -> GG = G +&+ G'' ->
+            t_typing D (G +&+ G' +&+ G'') m t)
           (fun D GG u t pf =>
-            forall G G' G'', wfenv (t_wft D) (G & G' & G'') -> GG = G & G'' ->
-            t_value_typing D (G & G' & G'') u t));
+            forall G G' G'', wfenv (t_wft D) (G +&+ G' +&+ G'') -> GG = G +&+ G'' ->
+            t_value_typing D (G +&+ G' +&+ G'') u t));
   intros; subst; eauto.
   apply_fresh* t_typing_let_fst as x. apply_ih_bind* H1.
     apply wfenv_push; auto.
@@ -378,17 +378,17 @@ Proof.
 Qed.
 
 Lemma t_typing_weaken : forall D G G' m t,
-  t_typing D G m t -> wfenv (t_wft D) (G & G') -> t_typing D (G & G') m t.
+  t_typing D G m t -> wfenv (t_wft D) (G +&+ G') -> t_typing D (G +&+ G') m t.
 Proof.
-  intros. rewrite <- (concat_empty_r (G & G')) in *.
+  intros. rewrite <- (concat_empty_r (G +&+ G')) in *.
   apply* t_typing_weaken_generalized. rewrite* concat_empty_r.
 Qed.
 
 Lemma t_value_typing_weaken : forall D G G' u t,
-  t_value_typing D G u t -> wfenv (t_wft D) (G & G') ->
-  t_value_typing D (G & G') u t.
+  t_value_typing D G u t -> wfenv (t_wft D) (G +&+ G') ->
+  t_value_typing D (G +&+ G') u t.
 Proof.
-  intros. rewrite <- (concat_empty_r (G & G')) in *.
+  intros. rewrite <- (concat_empty_r (G +&+ G')) in *.
   apply* t_value_typing_weaken_generalized. rewrite* concat_empty_r.
 Qed.
 
@@ -587,7 +587,7 @@ Proof.
            (fun b C Dh Gh th D G t pf => t_context b C)
            (fun b C Dh Gh th D G t pf => t_value_context b C)); intros; eauto.
   pick_fresh x. apply_fresh* t_value_context_abs as X.
-  assert (IH : wfenv (t_wft (D & X ~ star)) (G & x ~ open_tt_var t1 X)).
+  assert (IH : wfenv (t_wft (D +&+ X ~ star)) (G +&+ x ~ open_tt_var t1 X)).
     eapply t_context_typing_implies_wfenv. apply* (t x X).
   apply wfenv_push_inv in IH. destructs IH. apply* t_wft_implies_t_type.
 Qed.
