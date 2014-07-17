@@ -16,7 +16,8 @@ Proof.
 Qed.
 
 Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
-Proof. induction 1; eauto. Qed.
+Proof. induction 1; eauto.
+Qed.
 Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
 (* Weakening for t_wft *)
@@ -642,3 +643,50 @@ Proof.
   pick_fresh x. apply_fresh* t_value_typing_abs as X. intros.
     rewrite* plug_t_term_open_ee_rec; case_if*; rewrite* plug_t_term_open_te_rec.
 Qed.
+
+(* ********************************************************************** *)
+(* Reflection *)
+Lemma t_typeP t : reflect (t_type t) (t_typeb t). 
+Proof.
+elim: t=>/=; try by move=>*; constructor; case. 
+- by move=>v; constructor; apply: (@t_type_var _ v). 
+- by constructor; constructor. 
+- move=>t1 H1 t2 H2.
+  case: H1=>//=.
+  - case: H2=>H1 H2; constructor.
+    - by apply: t_type_pair H2 H1 _.
+    - by case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E2. 
+  by move=>H1; constructor; case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E1. 
+
+move=>t1 H1 t2 H2.
+case: H1=>//=.
+- case: H2=>//.
+  - move=>H2 H1; constructor.
+    set L := fv_tt t1. 
+    apply: (@t_type_arrow _ L) (erefl _).
+    move=>X nl.  .
+    rewrite (@open_tt_rec_type t1 (t_type_fvar X) H1 0).
+
+Lemma subst_on_closed_noneffectual (X : var) (t t' : typ) :
+ t_type t -> t = open_tt_rec 0 t' t.
+Proof.
+move=> tType.
+elim: tType. 
+move=> t0 x tEq.
+by rewrite tEq => //=.
+move=> t0 tEq.
+by rewrite tEq.
+move=> t0 t1 t2 t1Type t1Eq t2Type t2Eq tEq.
+rewrite tEq => //=.  
+by rewrite -t1Eq -t2Eq.
+move=> t0 L t1 t2 t1Type t1Eq t2Type t2Eq t0Eq.
+rewrite t0Eq => //=.
+pick_fresh_gen L X'.
+rewrite -(@t1Eq X' Fr).
+
+Lemma t_tp_sub (t : typ) X : 
+        t_type t -> X \notinLN (fv_tt t) -> t_type (open_tt_var t X). 
+Proof.
+elim: t X.
+- move=>X.
+

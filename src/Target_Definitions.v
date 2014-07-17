@@ -13,8 +13,8 @@ Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 (* Target Types *)
 
 Inductive t_type (t : typ) : Prop :=
-| t_type_var x of t = t_typ_fvar x
-| t_type_bool of t = t_typ_bool
+| t_type_var x of t = t_typ_fvar x -> t_type t
+| t_type_bool
 | t_type_pair : forall t1 t2, t_type t1 -> t_type t2 -> 
                   t = t_typ_pair t1 t2 -> t_type t
 | t_type_arrow : forall (L : vars) t1 t2,
@@ -22,12 +22,20 @@ Inductive t_type (t : typ) : Prop :=
      (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
      t = t_typ_arrow t1 t2 -> t_type t.
 
+(*
+Inductive t_type : typ -> Prop :=
+  | t_type_var : forall x, t_type (t_typ_fvar x)
+  | t_type_bool : t_type t_typ_bool
+  | t_type_pair : forall t1 t2,
+      t_type t1 -> t_type t2 -> t_type (t_typ_pair t1 t2)
+  | t_type_arrow : forall L t1 t2,
+      (forall X, X \notinLN L -> t_type (open_tt_var t1 X)) ->
+      (forall X, X \notinLN L -> t_type (open_tt_var t2 X)) ->
+      t_type (t_typ_arrow t1 t2).
+*)
 
-Lemma t_tp_sub (t : typ) X : 
-        t_type t -> X \notinLN (fv_tt t) -> t_type (open_tt_var t X). 
-Proof.
-elim: t X.
-- move=>X.
+
+
 
 
 Fixpoint t_typeb (t : typ) : bool :=
@@ -38,110 +46,6 @@ Fixpoint t_typeb (t : typ) : bool :=
   | t_typ_arrow t1 t2 => t_typeb t1 && t_typeb t2
   | _ => false
   end.
-
-Lemma t_typeP t : reflect (t_type t) (t_typeb t). 
-Proof.
-elim: t=>/=; try by move=>*; constructor; case. 
-- by move=>v; constructor; apply: (@t_type_var _ v). 
-- by constructor; constructor. 
-- move=>t1 H1 t2 H2.
-  case: H1=>//=.
-  - case: H2=>H1 H2; constructor.
-    - by apply: t_type_pair H2 H1 _.
-    - by case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E2. 
-  by move=>H1; constructor; case=>// s1 s2 S1 S2 [E1 E2]; apply: H1; rewrite E1. 
-
-move=>t1 H1 t2 H2.
-case: H1=>//=.
-- case: H2=>//.
-  - move=>H2 H1; constructor.
-    set L := fv_tt t1. 
-    apply: (@t_type_arrow _ L) (erefl _).
-    - move=>X nl.  
-      case: H1. 
-
-
-
-    case=>// s1 s2 S1 S2 [E1 E2]. apply: H2; rewrite E1. 
-   
-
-
-
-
-by constructor; move=> tF; invert tF.
-by constructor; move=> tF; invert tF.
-move=> n.
-by constructor; move=> tF; invert tF.
-move=> v.
-by constructor; apply t_type_var.
-by constructor; apply t_type_bool.
-  move=> t1 t1P t2 t2P /=.
-  move: t1P t2P.
-  case: (t_typeb t1) => //=.
-  case: (t_typeb t2) => //=.
-  move=> t1P t2P.
-  case: t1P.
-  case: t2P.
-  move=> t2P t1P.
-  constructor.
-  apply t_type_pair; by [].
-  move=> t2P t1P.
-  constructor.
-  move=> tF.
-  apply t2P.
-  by invert tF.
-  move=> t1P.
-  constructor.
-  move=> tF.
-  apply t1P.
-  by invert tF.
-  move=> t1P t2P.
-  constructor.
-  move=> tF.
-  invert t2P => t2F.
-  apply t2F.
-  by invert tF.
-  move=> t1P t2P.
-  constructor.
-  move=> tF.
-  invert t1P => t2F.
-  apply t2F.
-  by invert tF.
-  move=> t1 t1P t2 t2P /=.
-  move: t1P t2P.
-  case: (t_typeb t1) => //=.
-  case: (t_typeb t2) => //=.
-  move=> t1P t2P.
-  case: t1P.
-  case: t2P.
-  move=> t2P t1P.
-  constructor.
-  apply t_type_arrow. by [].
-
-  move=> t2P t1P.
-  constructor.
-  move=> tF.
-  apply t2P.
-  by invert tF.
-  move=> t1P.
-  constructor.
-  move=> tF.
-  apply t1P.
-  by invert tF.
-  move=> t1P t2P.
-  constructor.
-  move=> tF.
-  invert t2P => t2F.
-  apply t2F.
-  by invert tF.
-  move=> t1P t2P.
-  constructor.
-  move=> tF.
-  invert t1P => t2F.
-  apply t2F.
-  by invert tF.
-
-
 
 
 (* Target Terms *)
