@@ -10,13 +10,23 @@ Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 
 (* Regularity of t_wft *)
 
+Check ok_push_inv_ok.
 Lemma t_wft_implies_ok : forall D t, t_wft D t -> ok D.
 Proof.
-  induction 1; auto.
+  move=> D t wftT.
+  elim: wftT => //=.
+  move=> D0 t0 L t1 t2 wftT1 okD01 wftT2 okD02 t0Eq.
+  pick_fresh_gen L X'.
+  apply (@ok_push_inv_ok unit D0 X' star (@okD02 X' Fr)).
 Qed.
 
 Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
-Proof. induction 1; eauto.
+Proof. 
+move=> D t wftT.
+elim: wftT=> //=.
+move=> D0 t0 X okD0 bindsD0 eqT0.
+rewrite eqT0.
+constructor.
 Qed.
 Hint Resolve t_wft_implies_ok t_wft_implies_t_type.
 
