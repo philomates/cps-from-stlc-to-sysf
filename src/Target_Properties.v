@@ -4,6 +4,7 @@
 ***************************************************************************)
 
 Require Import LibWfenv Target_Definitions Core_Infrastructure.
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq path Eqdep.
 
 (* ********************************************************************** *)
 
@@ -12,7 +13,6 @@ Require Import LibWfenv Target_Definitions Core_Infrastructure.
 Lemma t_wft_implies_ok : forall D t, t_wft D t -> ok D.
 Proof.
   induction 1; auto.
-  pick_fresh X. assert (ok (D +&+ X ~ star)); auto.
 Qed.
 
 Lemma t_wft_implies_t_type : forall D t, t_wft D t -> t_type t.
